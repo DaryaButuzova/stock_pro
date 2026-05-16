@@ -1,0 +1,16 @@
+name: ui_kit
+description: UI components, colors, text styles for reuse across the app
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^10.0.0

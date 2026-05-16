@@ -1,0 +1,45 @@
+name: stock_pro
+description: "Stock Pro - Sales and inventory tracking application"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  ui_kit:
+    path: ../../packages/ui_kit
+
+  # Dependency Injection
+  get_it: ^8.0.3
+  injectable: ^2.5.0
+
+  # Networking
+  dio: ^5.8.0+1
+  retrofit: ^4.4.2
+
+  # Local Storage
+  drift: ^2.22.0
+  path: ^1.9.0
+
+  # State Management
+  flutter_bloc: ^9.1.0
+  equatable: ^2.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^10.0.0
+
+  # Code Generation
+  build_runner: ^2.4.15
+  injectable_generator: ^2.6.2
+  retrofit_generator: ^9.1.7
+  drift_dev: ^2.22.0
+
+flutter:
+  uses-material-design: true
