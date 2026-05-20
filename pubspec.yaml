@@ -6,6 +6,8 @@ environment:
 workspace:
   - apps/stock_pro
   - packages/ui_kit
+  - packages/registration
+  - packages/authorization
 
 dev_dependencies:
   melos: ^7.7.0

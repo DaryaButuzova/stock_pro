@@ -10,38 +10,33 @@ environment:
   sdk: ^3.11.5
 
 dependencies:
+  authorization_feature:
+    path: ../../packages/authorization
+  auto_route: ^11.1.0
+  dio: ^5.8.0+1
+  drift: ^2.22.0
+  equatable: ^2.0.7
   flutter:
     sdk: flutter
-  
+  flutter_bloc: ^9.1.0
+  get_it: ^9.2.1
+  injectable: ^3.0.0
+  path: ^1.9.0
+  registration_feature:
+    path: ../../packages/registration
+  retrofit: ^4.4.2
   ui_kit:
     path: ../../packages/ui_kit
 
-  # Dependency Injection
-  get_it: ^9.2.1
-  injectable: ^3.0.0
-
-  # Networking
-  dio: ^5.8.0+1
-  retrofit: ^4.4.2
-
-  # Local Storage
-  drift: ^2.22.0
-  path: ^1.9.0
-
-  # State Management
-  flutter_bloc: ^9.1.0
-  equatable: ^2.0.7
-
 dev_dependencies:
+  auto_route_generator: ^10.5.0
+  build_runner: ^2.4.15
+  drift_dev: ^2.22.0
   flutter_test:
     sdk: flutter
-  very_good_analysis: ^10.0.0
-
-  # Code Generation
-  build_runner: ^2.4.15
   injectable_generator: ^3.0.2
   retrofit_generator: ^10.2.6
-  drift_dev: ^2.22.0
+  very_good_analysis: ^10.0.0
 
 flutter:
   uses-material-design: true

@@ -1,5 +1,5 @@
-name: ui_kit
-description: UI components, colors, text styles for reuse across the app
+name: authorization_feature
+description: Authorization (login) feature module for Stock Pro
 version: 0.0.1
 publish_to: 'none'
 
@@ -11,8 +11,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  get_it: ^9.2.1
-  injectable: ^3.0.0
 
 dev_dependencies:
   flutter_test:
