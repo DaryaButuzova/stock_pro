@@ -1,0 +1,49 @@
+name: qwen3.6-35b-a3b
+version: 1.0.0
+schema: v1
+models: 
+  - name: Remote Qwen 3.6-35b-a3b (Tailscale)
+    provider: openai
+    model: qwen/qwen3.6-35b-a3b
+    apiBase: http://100.113.82.55:7319/v1
+    apiKey: sk-lm-WDYRmcbB:CzvtyC9HKxH6qIRzoYdA
+
+mcpServers:
+  - name: dart
+    command: dart
+    args:
+      - mcp-server
+      - "."
+    #cwd: ./
+
+  - name: project-filesystem
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "." 
+
+  - name: context7
+    command: npx
+    args:
+      - "-y"
+      - "@upstash/context7-mcp"
+    env:
+      CONTEXT7_API_KEY: "ctx7sk-fb51193b-78a2-41ac-beb3-5b008b479080"
+
+# --- Kindly Web Search ---
+  - name: kindly
+    command: uvx
+    args:
+      - "--from"
+      - "git+https://github.com/Shelpuk-AI-Technology-Consulting/kindly-web-search-mcp-server"
+      - "kindly-web-search-mcp-server"
+      - "start-mcp-server"
+    env:
+      SERPER_API_KEY: "544e7a5513b7c99d401b6360dbb96776db28daf0"
+      # TAVILY_API_KEY: "ваш_ключ_от_tavily"  # Если используете Tavily
+      
+      #GITHUB_TOKEN: "ваш_github_token"  # Опционально
+      
+      # Раскомментируйте, если браузер не находится автоматически:
+      # KINDLY_BROWSER_EXECUTABLE_PATH: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
