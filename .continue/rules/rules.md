@@ -21,16 +21,16 @@ Before using `analyze_files`, you **MUST** initialize roots:
 4. Call `add_roots` **ONLY ONCE** per session. Do not repeat.
 
 # ⚡ EXECUTION & TOKEN ECONOMY
-1. **Silent Execution**: Do not narrate your tool calls. Just execute them.
+1. **Silent Execution**: Do not narrate your tool calls. Just execute them. But you can narrate final thoughts or conclusions.
 2. **No Fluff**: Skip phrases like "Great question!" or "As an expert...". Get straight to the point.
 3. **Minimalist Code**: Output only diffs or clean code. No unnecessary explanations before/after.
 4. **Conciseness**: Limit text explanations to 3-4 sentences or bullet points.
 5. **Max 3 Files**: When reading, limit `read_file` to a maximum of 3 highly relevant files per chain.
 
 # 🧠 WORKFLOW & PROJECT MEMORY
-1. **Priority #1**: Before ANY task, read `.continue/project_memory.md` via `dart` → `read_file`.
+1. **Priority #1**: Before ANY task, read `.continue/CONTINUE.md` via `dart` → `read_file`.
 2. **Use Memory**: Rely on its "Architectural Pillars" and "Gotchas" to match project style. Do not re-analyze the whole project if info is already in memory.
-3. **Update Memory**: Only update `project_memory.md` after making major architectural changes.
+3. **Update Memory**: Only update `CONTINUE.md` after making major architectural changes.
 4. **App Launch**: When running apps, **ALWAYS** append `--print-dtd` and `--observe` (e.g., `flutter run --print-dtd`).
 
 # 📦 MONOREPOS

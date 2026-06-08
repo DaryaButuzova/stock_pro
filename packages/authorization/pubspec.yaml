@@ -9,10 +9,21 @@ environment:
   sdk: ^3.11.5
 
 dependencies:
+  auto_route: ^11.1.0
   flutter:
     sdk: flutter
+  flutter_bloc: ^9.1.0
+  get_it: ^9.2.1
+  injectable: ^3.0.0
+  supabase_feature:
+    path: ../supabase
+  ui_kit:
+    path: ../ui_kit
+  equatable: ^2.0.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  build_runner: ^2.4.15
+  injectable_generator: ^3.0.2
   very_good_analysis: ^10.0.0

@@ -25,28 +25,40 @@ class UIKitShowcase extends StatelessWidget {
                   children: [
                     _sectionTitle('Typography'),
                     const SizedBox(height: 16),
-                    const Text('Heading Large',
-                        style: AppTextStyles.headingLarge),
-                    const SizedBox(height: 8),
-                    const Text('Heading Medium',
-                        style: AppTextStyles.headingMedium),
-                    const SizedBox(height: 8),
-                    const Text('Heading Small',
-                        style: AppTextStyles.headingSmall),
+                    const Text(
+                      'Heading Large',
+                      style: AppTextStyles.headingLarge,
+                    ),
                     const SizedBox(height: 8),
                     const Text(
-                        'Body Large — Lorem ipsum dolor sit amet',
-                        style: AppTextStyles.bodyLarge),
+                      'Heading Medium',
+                      style: AppTextStyles.headingMedium,
+                    ),
                     const SizedBox(height: 8),
                     const Text(
-                        'Body Medium — Lorem ipsum dolor sit amet',
-                        style: AppTextStyles.bodyMedium),
+                      'Heading Small',
+                      style: AppTextStyles.headingSmall,
+                    ),
                     const SizedBox(height: 8),
-                    const Text('Body Small — Secondary text',
-                        style: AppTextStyles.bodySmall),
+                    const Text(
+                      'Body Large — Lorem ipsum dolor sit amet',
+                      style: AppTextStyles.bodyLarge,
+                    ),
                     const SizedBox(height: 8),
-                    const Text('Caption — Hint text',
-                        style: AppTextStyles.caption),
+                    const Text(
+                      'Body Medium — Lorem ipsum dolor sit amet',
+                      style: AppTextStyles.bodyMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Body Small — Secondary text',
+                      style: AppTextStyles.bodySmall,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Caption — Hint text',
+                      style: AppTextStyles.caption,
+                    ),
                     const SizedBox(height: 32),
 
                     _sectionTitle('Colors'),
@@ -163,8 +175,7 @@ class UIKitShowcase extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final color in colors)
-              _colorChip(color.$1, color.$2),
+            for (final color in colors) _colorChip(color.$1, color.$2),
           ],
         ),
       ],

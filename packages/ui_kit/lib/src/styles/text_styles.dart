@@ -12,7 +12,8 @@ const Color _kTextColor = AppColors.textPrimary;
 ///
 /// Apply this to [ThemeData.textTheme] for automatic propagation to all
 /// Material widgets (AppBar, ListTile, ElevatedButton, etc.).
-TextTheme get appTextTheme => Typography.material2021(
+TextTheme get appTextTheme =>
+    Typography.material2021(
       platform: defaultTargetPlatform,
     ).black.copyWith(
       // ——— Display (rarely used, large hero text) ———
@@ -112,15 +113,14 @@ TextStyle _base({
   required double fontSize,
   required FontWeight fontWeight,
   required double height,
-}) =>
-    TextStyle(
-      fontSize: fontSize,
-      fontWeight: fontWeight,
-      height: height,
-      color: _kTextColor,
-      fontFamily: _kFontFamily,
-      letterSpacing: _letterTracking(fontSize),
-    );
+}) => TextStyle(
+  fontSize: fontSize,
+  fontWeight: fontWeight,
+  height: height,
+  color: _kTextColor,
+  fontFamily: _kFontFamily,
+  letterSpacing: _letterTracking(fontSize),
+);
 
 /// Material 3 letter-spacing scale (negative tracking for larger sizes).
 double _letterTracking(double fontSize) {

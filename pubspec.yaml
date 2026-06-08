@@ -8,20 +8,175 @@ workspace:
   - packages/ui_kit
   - packages/registration
   - packages/authorization
+  - packages/supabase
+  - packages/profile
 
 dev_dependencies:
   melos: ^7.7.0
+  build_runner: ^2.4.15
 
 melos:
   scripts:
+    # ============================================
+    # Генерация кода
+    # ============================================
+    generate:
+      description: Генерация кода (freezed, injectable, auto_route) для всех пакетов
+      run: melos exec -- dart run build_runner build --delete-conflicting-outputs
+  
+    generate:watch:
+      description: Генерация кода в watch режиме для всех пакетов
+      run: melos exec -- dart run build_runner watch --delete-conflicting-outputs
+  
+    generate:app:
+      description: Генерация кода только для основного приложения
+      run: |
+        cd apps/kzp && dart run build_runner build --delete-conflicting-outputs
+        cd app_packages/domain && dart run build_runner build --delete-conflicting-outputs
+        cd ../data && dart run build_runner build --delete-conflicting-outputs
+  
+    generate:domain:
+      description: Генерация кода для domain пакета
+      run: cd apps/kzp/app_packages/domain && dart run build_runner build --delete-conflicting-outputs
+  
+    generate:data:
+      description: Генерация кода для data пакета
+      run: cd apps/kzp/app_packages/data && dart run build_runner build --delete-conflicting-outputs
+  
+    generate:api:
+      description: Генерация кода для kz_api пакета
+      run: cd packages/kz_api && dart run build_runner build --delete-conflicting-outputs
+  
+    # ============================================
+    # Очистка
+    # ============================================
+    clean:
+      description: Очистка build артефактов для всех пакетов
+      run: melos exec -- flutter clean
+  
+    clean:build:
+      description: Очистка только build_runner артефактов
+      run: melos exec -- dart run build_runner clean
+  
+    clean:all:
+      description: Полная очистка (clean + build_runner)
+      run: |
+        melos clean
+        melos clean:build
+  
+    # ============================================
+    # Тестирование
+    # ============================================
+    test:
+      description: Запуск тестов во всех пакетах
+      run: melos exec -- flutter test
+  
+    test:coverage:
+      description: Запуск тестов с покрытием кода
+      run: melos exec -- flutter test --coverage
+  
+    # ============================================
+    # Анализ кода
+    # ============================================
     analyze:
-      run: melos exec -- dart analyze .
-      description: Run dart analyze in all packages.
-
+      description: Анализ кода во всех пакетах
+      run: melos exec -- flutter analyze
+  
+    analyze:fix:
+      description: Автоматическое исправление проблем анализа
+      run: melos exec -- dart fix --apply
+  
     format:
+      description: Форматирование кода во всех пакетах
       run: melos exec -- dart format .
-      description: Run dart format in all packages.
-
-    get:
-      run: melos exec -- flutter pub get
-      description: Run flutter pub get in all packages.
+  
+    format:check:
+      description: Проверка форматирования кода без изменений
+      run: melos exec -- dart format --set-exit-if-changed .
+  
+    # ============================================
+    # Запуск приложения
+    # ============================================
+    run:
+      description: Запуск приложения в debug режиме
+      run: cd apps/kzp && flutter run
+  
+    run:release:
+      description: Запуск приложения в release режиме
+      run: cd apps/kzp && flutter run --release
+  
+    run:profile:
+      description: Запуск приложения в profile режиме
+      run: cd apps/kzp && flutter run --profile
+  
+    # ============================================
+    # Сборка
+    # ============================================
+    build:apk:
+      description: Сборка APK
+      run: cd apps/kzp && flutter build apk
+  
+    build:apk:split:
+      description: Сборка APK с разделением по ABI
+      run: cd apps/kzp && flutter build apk --split-per-abi
+  
+    build:appbundle:
+      description: Сборка Android App Bundle
+      run: cd apps/kzp && flutter build appbundle
+  
+    build:ios:
+      description: Сборка iOS приложения
+      run: cd apps/kzp && flutter build ios
+  
+    build:web:
+      description: Сборка веб-версии
+      run: cd apps/kzp && flutter build web
+  
+    # ============================================
+    # Утилиты
+    # ============================================
+    doctor:
+      description: Проверка окружения Flutter
+      run: flutter doctor -v
+  
+    pub:upgrade:
+      description: Обновление зависимостей во всех пакетах
+      run: melos exec -- flutter pub upgrade
+  
+    pub:outdated:
+      description: Проверка устаревших зависимостей
+      run: melos exec -- flutter pub outdated
+  
+    deps:graph:
+      description: Визуализация зависимостей
+      run: cd apps/kzp && flutter pub deps
+  
+    # ============================================
+    # Полный цикл разработки
+    # ============================================
+    setup:
+      description: Полная настройка проекта (bootstrap + generate)
+      run: |
+        melos bootstrap
+        melos generate
+  
+    reset:
+      description: Полный сброс проекта (clean + bootstrap + generate)
+      run: |
+        melos clean:all
+        melos bootstrap
+        melos generate
+  
+    precommit:
+      description: Команды перед коммитом (format + analyze + test)
+      run: |
+        melos format
+        melos analyze
+        melos test
+  
+    ci:
+      description: Команды для CI/CD (format:check + analyze + test)
+      run: |
+        melos format:check
+        melos analyze
+        melos test

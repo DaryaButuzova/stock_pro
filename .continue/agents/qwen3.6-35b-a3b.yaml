@@ -46,4 +46,4 @@ mcpServers:
       #GITHUB_TOKEN: "ваш_github_token"  # Опционально
       
       # Раскомментируйте, если браузер не находится автоматически:
-      # KINDLY_BROWSER_EXECUTABLE_PATH: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      KINDLY_BROWSER_EXECUTABLE_PATH: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"

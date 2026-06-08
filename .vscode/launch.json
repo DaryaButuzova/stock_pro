@@ -8,41 +8,33 @@
             "name": "stock_pro",
             "cwd": "apps/stock_pro",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "args": [
+                "--dart-define=SUPABASE_URL=https://drynqwhodmjlanhyntfj.supabase.co",
+                "--dart-define=SUPABASE_KEY=sb_publishable_o6yKDyFmmr9LerBqi1ETSQ_SxIEY69z",
+            ]
         },
         {
             "name": "stock_pro (profile mode)",
             "cwd": "apps/stock_pro",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
+            "flutterMode": "profile",
+            "args": [
+                "--dart-define=SUPABASE_URL=https://drynqwhodmjlanhyntfj.supabase.co",
+                "--dart-define=SUPABASE_KEY=sb_publishable_o6yKDyFmmr9LerBqi1ETSQ_SxIEY69z",
+            ]
         },
         {
             "name": "stock_pro (release mode)",
             "cwd": "apps/stock_pro",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "release"
+            "flutterMode": "release",
+            "args": [
+                "--dart-define=SUPABASE_URL=https://drynqwhodmjlanhyntfj.supabase.co",
+                "--dart-define=SUPABASE_KEY=sb_publishable_o6yKDyFmmr9LerBqi1ETSQ_SxIEY69z",
+            ]
         },
-        {
-            "name": "ui_kit",
-            "cwd": "packages/ui_kit",
-            "request": "launch",
-            "type": "dart"
-        },
-        {
-            "name": "ui_kit (profile mode)",
-            "cwd": "packages/ui_kit",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "profile"
-        },
-        {
-            "name": "ui_kit (release mode)",
-            "cwd": "packages/ui_kit",
-            "request": "launch",
-            "type": "dart",
-            "flutterMode": "release"
-        }
     ]
 }

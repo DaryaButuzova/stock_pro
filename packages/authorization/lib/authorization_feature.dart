@@ -1,7 +1,10 @@
 library authorization_feature;
 
-// Screens
-export 'src/authorization_screen.dart';
-
 // DI Module
-export 'src/authorization_module.dart';
+export 'src/di/injection.module.dart';
+
+// Screens
+export 'src/presentation/authorization_screen.dart';
+
+//BL
+export 'src/domain/authorization_cubit.dart';

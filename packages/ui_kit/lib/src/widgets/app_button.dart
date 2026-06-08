@@ -87,7 +87,8 @@ enum AppButtonVariant {
     backgroundColor: AppColors.surface,
     foregroundColor: AppColors.primary,
     borderColor: AppColors.primary,
-  );
+  )
+  ;
 
   const AppButtonVariant({
     required this.backgroundColor,
