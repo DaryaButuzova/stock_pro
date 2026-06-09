@@ -1,29 +1,23 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:injectable/injectable.dart';
-import 'package:supabase_feature/supabase_feature.dart';
+
+import 'models/registration_data.dart';
+import 'repositories/registration_repository.dart';
 
 part 'registration_state.dart';
 
 @injectable
 class RegistrationCubit extends Cubit<RegistrationState> {
-  RegistrationCubit(this._supabaseService) : super(RegistrationInitial());
+  RegistrationCubit(this._registrationRepository) : super(RegistrationInitial());
 
-  final SupabaseService _supabaseService;
+  final RegistrationRepository _registrationRepository;
 
-  Future<void> register(String email, String password) async {
+  Future<void> register(RegistrationData data) async {
     emit(RegistrationLoading());
     try {
-      final response = await _supabaseService.client.auth.signUp(
-        email: email,
-        password: password,
-      );
-
-      if (response.user != null) {
-        emit(RegistrationSuccess(hasSession: response.session != null));
-      } else {
-        emit(RegistrationFailure('Не удалось зарегистрироваться'));
-      }
+      final result = await _registrationRepository.register(data);
+      emit(RegistrationSuccess(hasSession: result.hasSession));
     } catch (e) {
       emit(RegistrationFailure(e.toString()));
     }

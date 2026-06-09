@@ -24,9 +24,9 @@ extension GetItInjectableX on _i174.GetIt {
   }) async {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     await _i375.SupabaseFeaturePackageModule().init(gh);
+    await _i630.ProfileFeaturePackageModule().init(gh);
     await _i385.AuthorizationFeaturePackageModule().init(gh);
     await _i898.RegistrationFeaturePackageModule().init(gh);
-    await _i630.ProfileFeaturePackageModule().init(gh);
     return this;
   }
 }

@@ -12,12 +12,12 @@ final class ProfileInitial extends ProfileState {}
 final class ProfileLoading extends ProfileState {}
 
 final class ProfileLoaded extends ProfileState {
-  const ProfileLoaded({required this.email});
+  const ProfileLoaded({required this.profile});
 
-  final String email;
+  final UserProfile profile;
 
   @override
-  List<Object?> get props => [email];
+  List<Object?> get props => [profile];
 }
 
 final class ProfileUnauthenticated extends ProfileState {}

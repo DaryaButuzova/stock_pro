@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:profile_feature/profile_feature.dart';
@@ -10,6 +12,9 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ProfileScreen();
+    return ProfileScreen(
+      onUnauthenticated: () =>
+          unawaited(context.router.replacePath('/login')),
+    );
   }
 }

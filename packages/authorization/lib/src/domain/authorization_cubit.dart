@@ -1,29 +1,22 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:injectable/injectable.dart';
-import 'package:supabase_feature/supabase_feature.dart';
+
+import 'repositories/auth_repository.dart';
 
 part 'authorization_state.dart';
 
 @injectable
 class AuthorizationCubit extends Cubit<AuthorizationState> {
-  final SupabaseService _supabaseService;
+  AuthorizationCubit(this._authRepository) : super(AuthorizationInitial());
 
-  AuthorizationCubit(this._supabaseService) : super(AuthorizationInitial());
+  final AuthRepository _authRepository;
 
   Future<void> authorization(String email, String password) async {
     emit(AuthorizationLoading());
     try {
-      final response = await _supabaseService.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-
-      if (response.user != null) {
-        emit(AuthorizationSuccess());
-      } else {
-        emit(AuthorizationFailure('Не удалось войти'));
-      }
+      await _authRepository.signIn(email: email, password: password);
+      emit(AuthorizationSuccess());
     } catch (e) {
       emit(AuthorizationFailure(e.toString()));
     }
@@ -31,7 +24,7 @@ class AuthorizationCubit extends Cubit<AuthorizationState> {
 
   Future<void> logout() async {
     try {
-      await _supabaseService.client.auth.signOut();
+      await _authRepository.signOut();
       emit(AuthorizationInitial());
     } catch (e) {
       emit(AuthorizationFailure(e.toString()));

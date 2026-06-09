@@ -9,7 +9,6 @@ environment:
   sdk: ^3.11.5
 
 dependencies:
-  auto_route: ^11.1.0
   equatable: ^2.0.7
   flutter:
     sdk: flutter

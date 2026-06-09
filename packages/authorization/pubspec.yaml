@@ -9,7 +9,6 @@ environment:
   sdk: ^3.11.5
 
 dependencies:
-  auto_route: ^11.1.0
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.0

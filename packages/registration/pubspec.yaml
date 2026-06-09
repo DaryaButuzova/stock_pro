@@ -9,13 +9,14 @@ environment:
   sdk: ^3.11.5
 
 dependencies:
-  auto_route: ^11.1.0
   equatable: ^2.0.7
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.0
   get_it: ^9.2.1
   injectable: ^3.0.0
+  profile_feature:
+    path: ../profile
   supabase_feature:
     path: ../supabase
   ui_kit:

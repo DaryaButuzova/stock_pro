@@ -1,4 +1,3 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -9,19 +8,35 @@ import '../domain/authorization_cubit.dart';
 final _getIt = GetIt.instance;
 
 class AuthorizationScreen extends StatelessWidget {
-  const AuthorizationScreen({super.key});
+  const AuthorizationScreen({
+    required this.onAuthSuccess,
+    required this.onNavigateToRegistration,
+    super.key,
+  });
+
+  final VoidCallback onAuthSuccess;
+  final VoidCallback onNavigateToRegistration;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => _getIt<AuthorizationCubit>(),
-      child: const _AuthorizationView(),
+      child: _AuthorizationView(
+        onAuthSuccess: onAuthSuccess,
+        onNavigateToRegistration: onNavigateToRegistration,
+      ),
     );
   }
 }
 
 class _AuthorizationView extends StatefulWidget {
-  const _AuthorizationView();
+  const _AuthorizationView({
+    required this.onAuthSuccess,
+    required this.onNavigateToRegistration,
+  });
+
+  final VoidCallback onAuthSuccess;
+  final VoidCallback onNavigateToRegistration;
 
   @override
   State<_AuthorizationView> createState() => _AuthorizationViewState();
@@ -41,7 +56,10 @@ class _AuthorizationViewState extends State<_AuthorizationView> {
 
   void _authorization(BuildContext context) {
     if (_formKey.currentState!.validate()) {
-      context.read<AuthorizationCubit>().authorization(_emailController.text, _passwordController.text);
+      context.read<AuthorizationCubit>().authorization(
+        _emailController.text,
+        _passwordController.text,
+      );
     }
   }
 
@@ -52,14 +70,16 @@ class _AuthorizationViewState extends State<_AuthorizationView> {
       body: BlocConsumer<AuthorizationCubit, AuthorizationState>(
         listener: (context, state) {
           if (state is AuthorizationSuccess) {
-            context.router.replacePath('/profile');
+            widget.onAuthSuccess();
           } else if (state is AuthorizationFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.error)));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.error)),
+            );
           }
         },
         builder: (context, state) {
           return Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Form(
               key: _formKey,
               child: Column(
@@ -67,7 +87,10 @@ class _AuthorizationViewState extends State<_AuthorizationView> {
                 children: [
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                    ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -79,7 +102,10 @@ class _AuthorizationViewState extends State<_AuthorizationView> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(labelText: 'Пароль', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Пароль',
+                      border: OutlineInputBorder(),
+                    ),
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -98,8 +124,7 @@ class _AuthorizationViewState extends State<_AuthorizationView> {
                         ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: () =>
-                        context.router.pushPath('/registration'),
+                    onPressed: widget.onNavigateToRegistration,
                     child: const Text('Нет аккаунта? Зарегистрироваться'),
                   ),
                 ],

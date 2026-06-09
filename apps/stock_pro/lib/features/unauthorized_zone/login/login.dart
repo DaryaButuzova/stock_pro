@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:authorization_feature/authorization_feature.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +12,11 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AuthorizationScreen();
+    return AuthorizationScreen(
+      onAuthSuccess: () =>
+          unawaited(context.router.replacePath('/profile')),
+      onNavigateToRegistration: () =>
+          unawaited(context.router.pushPath('/registration')),
+    );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:registration_feature/registration_feature.dart';
@@ -10,6 +12,21 @@ class AppRegistrationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const RegistrationScreen();
+    return RegistrationScreen(
+      onRegistrationSuccess: ({required hasSession}) {
+        if (hasSession) {
+          unawaited(context.router.replacePath('/profile'));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Подтвердите email, затем войдите'),
+            ),
+          );
+          unawaited(context.router.replacePath('/login'));
+        }
+      },
+      onNavigateToLogin: () =>
+          unawaited(context.router.replacePath('/login')),
+    );
   }
 }

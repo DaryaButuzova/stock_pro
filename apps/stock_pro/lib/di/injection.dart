@@ -54,9 +54,9 @@ void registerPreDependencies() {
 @InjectableInit(
   externalPackageModulesBefore: [
     ExternalModule(SupabaseFeaturePackageModule),
+    ExternalModule(ProfileFeaturePackageModule),
     ExternalModule(AuthorizationFeaturePackageModule),
     ExternalModule(RegistrationFeaturePackageModule),
-    ExternalModule(ProfileFeaturePackageModule),
   ],
 )
 Future<GetIt> configureDependencies() async {
