@@ -20,9 +20,23 @@ extension AppRouterNavigation on StackRouter {
     unawaited(pushPath(AppRoutes.registration));
   }
 
-  /// Replaces the current route with profile.
+  /// Replaces the current route with the authorized zone (sales tab).
+  void replaceWithAuthorized() {
+    unawaited(replacePath(AppRoutes.authorized));
+  }
+
+  /// Replaces the current route with profile tab.
   void replaceWithProfile() {
-    unawaited(replacePath(AppRoutes.profile));
+    unawaited(
+      replacePath('${AppRoutes.authorized}/${AppRoutes.profile}'),
+    );
+  }
+
+  /// Replaces the current route with stock tab.
+  void replaceWithStock() {
+    unawaited(
+      replacePath('${AppRoutes.authorized}/${AppRoutes.stock}'),
+    );
   }
 
   /// Replaces the current route with UI Kit showcase.

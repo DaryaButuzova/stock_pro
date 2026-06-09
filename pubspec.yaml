@@ -10,6 +10,8 @@ workspace:
   - packages/authorization
   - packages/supabase
   - packages/profile
+  - packages/stock
+  - packages/local_reference
 
 dev_dependencies:
   melos: ^7.7.0

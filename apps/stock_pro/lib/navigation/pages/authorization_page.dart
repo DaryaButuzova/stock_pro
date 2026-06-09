@@ -12,7 +12,7 @@ class AuthorizationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AuthorizationScreen(
-      onAuthSuccess: context.router.replaceWithProfile,
+      onAuthSuccess: context.router.replaceWithAuthorized,
       onNavigateToRegistration: context.router.pushRegistration,
     );
   }

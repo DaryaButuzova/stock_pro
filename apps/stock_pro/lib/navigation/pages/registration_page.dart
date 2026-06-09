@@ -14,7 +14,7 @@ class RegistrationPage extends StatelessWidget {
     return RegistrationScreen(
       onRegistrationSuccess: ({required hasSession}) {
         if (hasSession) {
-          context.router.replaceWithProfile();
+          context.router.replaceWithAuthorized();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

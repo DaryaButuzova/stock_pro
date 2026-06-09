@@ -1,8 +1,10 @@
 import 'package:authorization_feature/authorization_feature.dart';
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
+import 'package:local_reference_feature/local_reference_feature.dart';
 import 'package:profile_feature/profile_feature.dart';
 import 'package:registration_feature/registration_feature.dart';
+import 'package:stock_feature/stock_feature.dart';
 import 'package:stock_pro/di/injection.config.dart';
 import 'package:supabase_feature/supabase_feature.dart';
 
@@ -54,9 +56,11 @@ void registerPreDependencies() {
 @InjectableInit(
   externalPackageModulesBefore: [
     ExternalModule(SupabaseFeaturePackageModule),
+    ExternalModule(LocalReferenceFeaturePackageModule),
     ExternalModule(ProfileFeaturePackageModule),
     ExternalModule(AuthorizationFeaturePackageModule),
     ExternalModule(RegistrationFeaturePackageModule),
+    ExternalModule(StockFeaturePackageModule),
   ],
 )
 Future<GetIt> configureDependencies() async {
