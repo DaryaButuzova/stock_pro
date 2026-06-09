@@ -1,32 +1,30 @@
-import 'dart:async';
-
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:registration_feature/registration_feature.dart';
+import 'package:stock_pro/navigation/extensions/app_router_extension.dart';
 
-/// App route wrapper for the registration feature screen.
+/// Navigation wrapper for [RegistrationScreen].
 @RoutePage()
-class AppRegistrationScreen extends StatelessWidget {
-  /// Creates the registration route.
-  const AppRegistrationScreen({super.key});
+class RegistrationPage extends StatelessWidget {
+  /// Creates the registration page.
+  const RegistrationPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return RegistrationScreen(
       onRegistrationSuccess: ({required hasSession}) {
         if (hasSession) {
-          unawaited(context.router.replacePath('/profile'));
+          context.router.replaceWithProfile();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Подтвердите email, затем войдите'),
             ),
           );
-          unawaited(context.router.replacePath('/login'));
+          context.router.replaceWithAuthorization();
         }
       },
-      onNavigateToLogin: () =>
-          unawaited(context.router.replacePath('/login')),
+      onNavigateToLogin: context.router.replaceWithAuthorization,
     );
   }
 }

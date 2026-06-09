@@ -11,33 +11,17 @@
 part of 'app_router.dart';
 
 /// generated route for
-/// [AppRegistrationScreen]
-class AppRegistrationScreenRoute extends PageRouteInfo<void> {
-  const AppRegistrationScreenRoute({List<PageRouteInfo>? children})
-    : super(AppRegistrationScreenRoute.name, initialChildren: children);
+/// [AuthorizationPage]
+class AuthorizationPageRoute extends PageRouteInfo<void> {
+  const AuthorizationPageRoute({List<PageRouteInfo>? children})
+    : super(AuthorizationPageRoute.name, initialChildren: children);
 
-  static const String name = 'AppRegistrationScreenRoute';
-
-  static PageInfo page = PageInfo(
-    name,
-    builder: (data) {
-      return const AppRegistrationScreen();
-    },
-  );
-}
-
-/// generated route for
-/// [LoginScreen]
-class LoginScreenRoute extends PageRouteInfo<void> {
-  const LoginScreenRoute({List<PageRouteInfo>? children})
-    : super(LoginScreenRoute.name, initialChildren: children);
-
-  static const String name = 'LoginScreenRoute';
+  static const String name = 'AuthorizationPageRoute';
 
   static PageInfo page = PageInfo(
     name,
     builder: (data) {
-      return const LoginScreen();
+      return const AuthorizationPage();
     },
   );
 }
@@ -54,6 +38,22 @@ class ProfilePageRoute extends PageRouteInfo<void> {
     name,
     builder: (data) {
       return const ProfilePage();
+    },
+  );
+}
+
+/// generated route for
+/// [RegistrationPage]
+class RegistrationPageRoute extends PageRouteInfo<void> {
+  const RegistrationPageRoute({List<PageRouteInfo>? children})
+    : super(RegistrationPageRoute.name, initialChildren: children);
+
+  static const String name = 'RegistrationPageRoute';
+
+  static PageInfo page = PageInfo(
+    name,
+    builder: (data) {
+      return const RegistrationPage();
     },
   );
 }

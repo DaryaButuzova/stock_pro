@@ -19,12 +19,11 @@ class RegistrationFeaturePackageModule extends _i526.MicroPackageModule {
 // initializes the registration of main-scope dependencies inside of GetIt
   @override
   _i687.FutureOr<void> init(_i526.GetItHelper gh) {
-    gh.factory<_i545.RegistrationRepository>(
-        () => _i838.SupabaseRegistrationRepository(
-              gh<_i375.SupabaseService>(),
-              gh<_i630.ProfileRepository>(),
-            ));
-    gh.factory<_i74.RegistrationCubit>(
-        () => _i74.RegistrationCubit(gh<_i545.RegistrationRepository>()));
+    gh.factory<_i545.RegistrationRepository>(() =>
+        _i838.SupabaseRegistrationRepository(gh<_i375.SupabaseService>()));
+    gh.factory<_i74.RegistrationCubit>(() => _i74.RegistrationCubit(
+          gh<_i545.RegistrationRepository>(),
+          gh<_i630.ProfileRepository>(),
+        ));
   }
 }

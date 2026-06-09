@@ -1,5 +1,4 @@
 import 'package:injectable/injectable.dart';
-import 'package:profile_feature/profile_feature.dart';
 import 'package:supabase_feature/supabase_feature.dart';
 
 import '../../domain/models/registration_data.dart';
@@ -8,13 +7,9 @@ import '../../domain/repositories/registration_repository.dart';
 
 @Injectable(as: RegistrationRepository)
 class SupabaseRegistrationRepository implements RegistrationRepository {
-  SupabaseRegistrationRepository(
-    this._supabaseService,
-    this._profileRepository,
-  );
+  SupabaseRegistrationRepository(this._supabaseService);
 
   final SupabaseService _supabaseService;
-  final ProfileRepository _profileRepository;
 
   @override
   Future<RegistrationResult> register(RegistrationData data) async {
@@ -29,17 +24,10 @@ class SupabaseRegistrationRepository implements RegistrationRepository {
       throw Exception('Не удалось зарегистрироваться');
     }
 
-    if (response.session != null) {
-      await _profileRepository.createProfile(
-        userId: user.id,
-        creds: data.creds,
-        email: data.email.trim(),
-        password: data.password,
-        role: data.role.value,
-      );
-    }
-
-    return RegistrationResult(hasSession: response.session != null);
+    return RegistrationResult(
+      userId: user.id,
+      hasSession: response.session != null,
+    );
   }
 
   Map<String, dynamic> _userMetadata(RegistrationData data) {

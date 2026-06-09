@@ -52,12 +52,11 @@ stock_pro/
 │       │   ├── main.dart
 │       │   ├── di/              # корневой DI (@InjectableInit)
 │       │   ├── navigation/      # AppRouter (auto_route)
-│       │   ├── features/        # тонкие route-обёртки
-│       │   │   ├── unauthorized_zone/
-│       │   │   │   ├── login/
-│       │   │   │   └── registration/
-│       │   │   └── authorized_zone/
-│       │   │       └── profile/
+│       │   ├── navigation/      # роутер + page-обёртки + пути
+│       │   │   ├── app_router.dart
+│       │   │   ├── pages/       # связывают пакеты с навигацией
+│       │   │   └── routes/      # AppRoutes (константы путей)
+│       │   ├── features/        # app-специфичная композиция (inventory, sales…)
 │       │   └── ui/              # ui_kit_showcase (dev)
 │       └── pubspec.yaml
 └── packages/
@@ -110,7 +109,7 @@ packages/<feature>/
 2. **Пакеты фич не знают маршруты приложения** — навигация через callbacks (`onAuthSuccess`, `onNavigateToLogin`, …).
 3. **Пакет `supabase`** — только инфраструктура: `SupabaseService`, конфиг, SQL-миграции. Бизнес-логика пользователя — в `profile`.
 4. **Смена data source** (локальное хранилище, REST API): меняется только `data/repositories/`, domain и presentation остаются без изменений.
-5. **Роуты auto_route** объявляются в `apps/stock_pro` (генератор не сканирует пакеты). В app — тонкие `@RoutePage()`-обёртки над экранами из пакетов.
+5. **Роуты auto_route** объявляются в `apps/stock_pro/lib/navigation/` (генератор не сканирует пакеты). Page-обёртки живут в `navigation/pages/`, пути — в `navigation/routes/app_routes.dart`.
 
 ### Зависимости между пакетами
 
@@ -126,7 +125,7 @@ supabase_feature                # без зависимостей на друг�
 authorization_feature           → supabase_feature, ui_kit
 ```
 
-`registration` при регистрации вызывает `ProfileRepository.createProfile()` — профиль пользователя принадлежит фиче `profile`.
+`registration` зависит от `profile` на уровне **cubit**: после `signUp` cubit вызывает `ProfileRepository.createProfile()`. Data-слой registration знает только про auth.
 
 ---
 
@@ -171,9 +170,9 @@ authorization_feature           → supabase_feature, ui_kit
 |-----------|----------|
 | `RegistrationData` | DTO формы: ФИО, email, password, `UserRole` |
 | `UserRole` | `staff` / `admin` |
-| `RegistrationRepository` | Контракт: `register(RegistrationData)` → `RegistrationResult` |
-| `SupabaseRegistrationRepository` | `auth.signUp` + `ProfileRepository.createProfile` при активной сессии |
-| `RegistrationCubit` | Оркестрация через репозиторий |
+| `RegistrationRepository` | Контракт: `register(RegistrationData)` → `RegistrationResult` (только auth sign-up) |
+| `SupabaseRegistrationRepository` | `auth.signUp` + metadata (`creds`, `role`) |
+| `RegistrationCubit` | Оркестрация: sign-up → при `hasSession` вызывает `ProfileRepository.createProfile()` |
 | `RegistrationScreen` | Форма; callbacks: `onRegistrationSuccess({hasSession})`, `onNavigateToLogin` |
 
 Поле `creds` в БД формируется как `"Фамилия Имя Отчество"`.
@@ -206,28 +205,21 @@ void main() async {
 
 `StockProApp` — `MaterialApp.router` с темой из `ui_kit` и `AppRouter`.
 
-### Route-обёртки (`lib/features/`)
+### Navigation pages (`lib/navigation/pages/`)
 
-Приложение не дублирует UI — только связывает экраны пакетов с навигацией:
+Приложение не дублирует UI — **navigation layer** связывает экраны пакетов с `auto_route`:
 
 ```dart
-// login.dart
+// navigation/pages/authorization_page.dart
 AuthorizationScreen(
-  onAuthSuccess: () => context.router.replacePath('/profile'),
-  onNavigateToRegistration: () => context.router.pushPath('/registration'),
-)
-
-// registration.dart
-RegistrationScreen(
-  onRegistrationSuccess: ({required hasSession}) { /* /profile или /login */ },
-  onNavigateToLogin: () => context.router.replacePath('/login'),
-)
-
-// profile.dart
-ProfileScreen(
-  onUnauthenticated: () => context.router.replacePath('/login'),
+  onAuthSuccess: context.router.replaceWithProfile,
+  onNavigateToRegistration: context.router.pushRegistration,
 )
 ```
+
+Пути — в `navigation/routes/app_routes.dart`. Навигация — через extension `AppRouterNavigation` (`navigation/extensions/app_router_extension.dart`): `replaceWithProfile()`, `pushRegistration()`, `replaceWithAuthorization()` и т.д.
+
+`lib/features/` в app — для app-специфичной композиции (например, shell authorized zone), **не** для пустых route-обёрток.
 
 ---
 
@@ -237,17 +229,17 @@ ProfileScreen(
 
 | Зона | Путь | Route-обёртка | Экран пакета |
 |------|------|---------------|--------------|
-| Неавторизованная | `/login` (initial) | `LoginScreen` | `AuthorizationScreen` |
-| Неавторизованная | `/registration` | `AppRegistrationScreen` | `RegistrationScreen` |
+| Неавторизованная | `/authorization` (initial) | `AuthorizationPage` | `AuthorizationScreen` |
+| Неавторизованная | `/registration` | `RegistrationPage` | `RegistrationScreen` |
 | Авторизованная | `/profile` | `ProfilePage` | `ProfileScreen` |
 | Dev | `/showcase` | `UIKitShowcase` | UI Kit демо |
 
 ### Потоки
 
 ```
-/login ──успех──► /profile ──выход──► /login
+/authorization ──успех──► /profile ──выход──► /authorization
 /registration ──сессия есть──► /profile
-/registration ──нужно подтвердить email──► /login (+ snackbar)
+/registration ──нужно подтвердить email──► /authorization (+ snackbar)
 ```
 
 Route guards пока **не реализованы** — защита `/profile` опирается на проверку сессии в `ProfileCubit`.
@@ -324,7 +316,7 @@ flutter run \
 ### Регистрация пользователя
 
 1. `auth.signUp` с metadata: `{ creds, role }`
-2. Если есть **сессия** → `ProfileRepository.createProfile()` (прямой insert)
+2. Если есть **сессия** → `RegistrationCubit` вызывает `ProfileRepository.createProfile()` (прямой insert)
 3. Если сессии **нет** (email confirmation) → строка создаётся триггером `on_auth_user_created` из metadata
 
 SQL: `packages/supabase/migrations/001_create_users.sql`
@@ -505,7 +497,7 @@ void initInventoryMicroPackage() {}
 
 1. Добавить пакет в workspace (`pubspec.yaml` root) и `apps/stock_pro/pubspec.yaml`
 2. `ExternalModule(InventoryFeaturePackageModule)` в `apps/stock_pro/lib/di/injection.dart`
-3. Route-обёртка в `apps/stock_pro/lib/features/authorized_zone/inventory/`
+3. Navigation page в `apps/stock_pro/lib/navigation/pages/inventory_page.dart`
 4. Маршрут в `app_router.dart` → `build_runner build` в app
 5. `dart pub get`
 
@@ -528,7 +520,7 @@ void initInventoryMicroPackage() {}
 ### Не делать
 
 - Не импортировать `SupabaseService` в cubit или presentation
-- Не хардкодить пути (`/profile`, `/login`) внутри feature-пакетов
+- Не хардкодить пути (`/profile`, `/authorization`) внутри feature-пакетов
 - Не добавлять бизнес-логику пользователя в `packages/supabase`
 - Не коммитить секреты (ключи Supabase — только через `--dart-define` или CI secrets)
 - Не ставить `@RoutePage()` на экраны внутри packages (только в app-обёртках)
@@ -541,7 +533,7 @@ void initInventoryMicroPackage() {}
 | Репозиторий (контракт) | `<Feature>Repository` |
 | Реализация Supabase | `Supabase<Feature>Repository` |
 | Micropackage module | `<Feature>FeaturePackageModule` |
-| Route-обёртка в app | `<Name>Screen` / `<Name>Page` с `@RoutePage()` |
+| Navigation page в app | `<Name>Page` в `navigation/pages/` с `@RoutePage()` |
 
 ---
 
@@ -560,7 +552,7 @@ void initInventoryMicroPackage() {}
 
 **Задача: изменить экран входа**  
 → `packages/authorization/lib/src/presentation/authorization_screen.dart`  
-→ навигация: `apps/stock_pro/lib/features/unauthorized_zone/login/login.dart`
+→ навигация: `apps/stock_pro/lib/navigation/pages/authorization_page.dart`
 
 **Задача: изменить логику регистрации**  
 → cubit: `packages/registration/lib/src/domain/registration_cubit.dart`  
@@ -571,7 +563,7 @@ void initInventoryMicroPackage() {}
 → данные: `packages/profile/lib/src/data/repositories/supabase_profile_repository.dart`
 
 **Задача: добавить маршрут**  
-→ `apps/stock_pro/lib/navigation/app_router.dart` + route-обёртка в `lib/features/`  
+→ `app_router.dart` + page в `lib/navigation/pages/`  
 → `dart run build_runner build` в `apps/stock_pro`
 
 **Задача: добавить DI**  
