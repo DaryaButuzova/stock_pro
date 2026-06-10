@@ -15,7 +15,7 @@ class SupabaseStockRepository implements StockRepository {
     final data = await _supabaseService.client
         .from('stock')
         .select()
-        .order('created_at', ascending: false);
+        .order('goods_addr', ascending: true);
 
     return (data as List<dynamic>)
         .map((item) => StockItem.fromJson(item as Map<String, dynamic>))

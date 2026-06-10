@@ -11,6 +11,7 @@ workspace:
   - packages/supabase
   - packages/profile
   - packages/stock
+  - packages/sales
   - packages/local_reference
 
 dev_dependencies:

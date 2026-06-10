@@ -34,9 +34,9 @@ Flutter-приложение для учёта продаж и складски�
 | State management | `flutter_bloc` + `equatable` |
 | DI | `get_it` + `injectable` (MicroPackage) |
 | Навигация | `auto_route` |
-| Backend | Supabase (`supabase_flutter`) |
+| Backend | Supabase (`supabase_flutter`) + Realtime |
+| Локальная БД | `drift` + `sqlite3_flutter_libs` (пакет `local_reference`) |
 | Сеть (зарезервировано) | `dio` + `retrofit` |
-| Локальная БД (зарезервировано) | `drift` |
 | Линтинг | `very_good_analysis` |
 
 ---
@@ -51,20 +51,21 @@ stock_pro/
 │       ├── lib/
 │       │   ├── main.dart
 │       │   ├── di/              # корневой DI (@InjectableInit)
-│       │   ├── navigation/      # AppRouter (auto_route)
 │       │   ├── navigation/      # роутер + page-обёртки + пути
 │       │   │   ├── app_router.dart
 │       │   │   ├── pages/       # связывают пакеты с навигацией
-│       │   │   └── routes/      # AppRoutes (константы путей)
-│       │   ├── features/        # app-специфичная композиция (inventory, sales…)
+│       │   │   ├── routes/      # AppRoutes (константы путей)
+│       │   │   └── extensions/  # AppRouterNavigation
 │       │   └── ui/              # ui_kit_showcase (dev)
 │       └── pubspec.yaml
 └── packages/
     ├── ui_kit/                  # дизайн-система
     ├── supabase/                # клиент Supabase + SQL-миграции
+    ├── local_reference/         # локальные справочники (Drift) + Realtime sync
     ├── authorization/           # вход
     ├── registration/            # регистрация
-    └── profile/                 # профиль (авторизованная зона)
+    ├── profile/                 # профиль (вкладка авторизованной зоны)
+    └── stock/                   # складской учёт (вкладка авторизованной зоны)
 ```
 
 **Принцип:** бизнес-логика и UI фичи — в `packages/<feature>/`. Приложение только собирает фичи: DI, роутинг, callbacks навигации.
@@ -100,16 +101,17 @@ packages/<feature>/
 |------|-----------------|
 | **presentation** | UI, формы, `BlocProvider`, **callbacks** для навигации |
 | **domain** | Cubit, state, модели, **абстрактные** репозитории |
-| **data** | Конкретные реализации репозиториев (Supabase, в будущем — API, local) |
+| **data** | Конкретные реализации репозиториев (Supabase, Drift, в будущем — API) |
 | **di** | Регистрация зависимостей через injectable micropackage |
 
 ### Ключевые правила
 
 1. **Cubit не зависит от Supabase напрямую** — только от `*Repository` (абстракция).
 2. **Пакеты фич не знают маршруты приложения** — навигация через callbacks (`onAuthSuccess`, `onNavigateToLogin`, …).
-3. **Пакет `supabase`** — только инфраструктура: `SupabaseService`, конфиг, SQL-миграции. Бизнес-логика пользователя — в `profile`.
-4. **Смена data source** (локальное хранилище, REST API): меняется только `data/repositories/`, domain и presentation остаются без изменений.
-5. **Роуты auto_route** объявляются в `apps/stock_pro/lib/navigation/` (генератор не сканирует пакеты). Page-обёртки живут в `navigation/pages/`, пути — в `navigation/routes/app_routes.dart`.
+3. **Пакет `supabase`** — только инфраструктура: `SupabaseService`, конфиг, SQL-миграции. Бизнес-логика пользователя — в feature-пакетах.
+4. **Пакет `local_reference`** — локальные справочники (Drift): чтение из SQLite, синк и Realtime из Supabase. Не смешивать с бизнес-фичами вроде `stock`.
+5. **Смена data source** (локальное хранилище, REST API): меняется только `data/repositories/`, domain и presentation остаются без изменений.
+6. **Роуты auto_route** объявляются в `apps/stock_pro/lib/navigation/` (генератор не сканирует пакеты). Page-обёртки живут в `navigation/pages/`, пути — в `navigation/routes/app_routes.dart`.
 
 ### Зависимости между пакетами
 
@@ -117,15 +119,21 @@ packages/<feature>/
 apps/stock_pro
     ├── ui_kit
     ├── supabase_feature
+    ├── local_reference_feature
     ├── authorization_feature
     ├── registration_feature  → profile_feature, supabase_feature
-    └── profile_feature         → supabase_feature
+    ├── profile_feature         → supabase_feature, ui_kit
+    └── stock_feature           → local_reference_feature, supabase_feature, ui_kit
 
+local_reference_feature         → supabase_feature
+stock_feature                   → local_reference_feature, supabase_feature, ui_kit
 supabase_feature                # без зависимостей на другие фичи
 authorization_feature           → supabase_feature, ui_kit
 ```
 
 `registration` зависит от `profile` на уровне **cubit**: после `signUp` cubit вызывает `ProfileRepository.createProfile()`. Data-слой registration знает только про auth.
+
+`stock` зависит от `local_reference` для чтения названий товаров из локального кэша `goods`.
 
 ---
 
@@ -189,6 +197,35 @@ authorization_feature           → supabase_feature, ui_kit
 | `ProfileCubit` | Загрузка профиля, logout |
 | `ProfileScreen` | Отображение ФИО, email, роли; callback: `onUnauthenticated` |
 
+### `packages/local_reference`
+
+Локальное хранилище справочников (Drift/SQLite) с синхронизацией из Supabase.
+
+| Компонент | Описание |
+|-----------|----------|
+| `AppDatabase` | Drift-база `reference_cache.sqlite` |
+| `GoodsTable` | Локальная копия `public.goods` |
+| `GoodsRepository` | Чтение из локальной БД (`getById`, `getAll`) |
+| `GoodsSyncRepository` | Полный синк и инкрементальные изменения из Realtime |
+| `ReferenceSyncService` | Оркестратор синка всех справочников |
+| `GoodsRealtimeService` | Подписка на `public.goods` → обновление Drift |
+
+Импорт: `package:local_reference_feature/local_reference_feature.dart`
+
+### `packages/stock`
+
+Складской учёт (вкладка «Склад»).
+
+| Компонент | Описание |
+|-----------|----------|
+| `StockItem` | Модель строки `public.stock` (PK: `goods_id`) |
+| `StockRepository` | Контракт: `getStockItems()` |
+| `SupabaseStockRepository` | Чтение из Supabase |
+| `StockCubit` | Загрузка склада + названия товаров из `GoodsRepository`; Realtime на `stock` |
+| `StockScreen` | Список позиций, подсветка низкого остатка, pull-to-refresh |
+
+Импорт: `package:stock_feature/stock_feature.dart`
+
 ---
 
 ## Приложение stock_pro
@@ -212,14 +249,14 @@ void main() async {
 ```dart
 // navigation/pages/authorization_page.dart
 AuthorizationScreen(
-  onAuthSuccess: context.router.replaceWithProfile,
+  onAuthSuccess: context.router.replaceWithAuthorized,
   onNavigateToRegistration: context.router.pushRegistration,
 )
 ```
 
-Пути — в `navigation/routes/app_routes.dart`. Навигация — через extension `AppRouterNavigation` (`navigation/extensions/app_router_extension.dart`): `replaceWithProfile()`, `pushRegistration()`, `replaceWithAuthorization()` и т.д.
+Пути — в `navigation/routes/app_routes.dart`. Навигация — через extension `AppRouterNavigation` (`navigation/extensions/app_router_extension.dart`): `replaceWithAuthorized()`, `replaceWithStock()`, `replaceWithProfile()`, `pushRegistration()`, `replaceWithAuthorization()` и т.д.
 
-`lib/features/` в app — для app-специфичной композиции (например, shell authorized zone), **не** для пустых route-обёрток.
+Заглушка продаж (`SalesPage`) живёт в `navigation/pages/` до выделения в отдельный пакет.
 
 ---
 
@@ -227,22 +264,36 @@ AuthorizationScreen(
 
 Роутер: `apps/stock_pro/lib/navigation/app_router.dart`
 
-| Зона | Путь | Route-обёртка | Экран пакета |
-|------|------|---------------|--------------|
+| Зона | Путь | Route-обёртка | Экран |
+|------|------|---------------|-------|
 | Неавторизованная | `/authorization` (initial) | `AuthorizationPage` | `AuthorizationScreen` |
 | Неавторизованная | `/registration` | `RegistrationPage` | `RegistrationScreen` |
-| Авторизованная | `/profile` | `ProfilePage` | `ProfileScreen` |
+| Авторизованная | `/authorized` | `AuthorizedShellPage` | shell с `AutoTabsScaffold` |
+| Авторизованная | `/authorized/sales` | `SalesPage` | заглушка «Продажи» |
+| Авторизованная | `/authorized/stock` | `StockPage` | `StockScreen` |
+| Авторизованная | `/authorized/profile` | `ProfilePage` | `ProfileScreen` |
 | Dev | `/showcase` | `UIKitShowcase` | UI Kit демо |
+
+### Вкладки авторизованной зоны
+
+`AuthorizedShellPage` — `AutoTabsScaffold` с нижней навигацией (`NavigationBar`):
+
+1. **Продажи** — заглушка (пакет не реализован)
+2. **Склад** — `StockScreen`
+3. **Профиль** — `ProfileScreen`
+
+При входе в shell запускается `GoodsRealtimeService` (подписка на `goods`).
 
 ### Потоки
 
 ```
-/authorization ──успех──► /profile ──выход──► /authorization
-/registration ──сессия есть──► /profile
+/authorization ──успех──► /authorized (вкладка «Продажи»)
+/registration ──сессия есть──► /authorized
 /registration ──нужно подтвердить email──► /authorization (+ snackbar)
+/authorized/profile ──выход──► /authorization
 ```
 
-Route guards пока **не реализованы** — защита `/profile` опирается на проверку сессии в `ProfileCubit`.
+Route guards пока **не реализованы** — защита авторизованной зоны опирается на проверку сессии в `ProfileCubit`.
 
 ---
 
@@ -260,12 +311,14 @@ Route guards пока **не реализованы** — защита `/profile
 
 ```
 SupabaseFeaturePackageModule
+  → LocalReferenceFeaturePackageModule
   → ProfileFeaturePackageModule
   → AuthorizationFeaturePackageModule
   → RegistrationFeaturePackageModule
+  → StockFeaturePackageModule
 ```
 
-Порядок важен: `profile` нужен `SupabaseService`; `registration` нужен `ProfileRepository`.
+Порядок важен: `local_reference` нужен `SupabaseService`; `registration` нужен `ProfileRepository`; `stock` нужен `GoodsRepository` и `ReferenceSyncService`.
 
 ### Micropackage в фиче
 
@@ -321,21 +374,70 @@ flutter run \
 
 SQL: `packages/supabase/migrations/001_create_users.sql`
 
+### Таблица `public.goods` (справочник товаров)
+
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| `id` | uuid (PK) | Идентификатор товара |
+| `created_at` | timestamptz | Дата создания |
+| `name` | varchar | Название |
+| `description` | varchar | Описание |
+| `cost` | float4 | Себестоимость / цена |
+| `category` | varchar | Категория |
+
+Локальная копия — в Drift (`packages/local_reference`). SQL: `003_create_goods.sql`
+
+### Таблица `public.stock` (складские остатки)
+
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| `goods_id` | uuid (PK) | Ссылка на товар |
+| `created_at` | timestamptz | Дата создания |
+| `goods_addr` | varchar | Адрес / ячейка на складе |
+| `count` | int4 | Текущее количество |
+| `min_count` | int4 | Минимальный порог (алерт «Мало») |
+
+SQL: `002_create_stock.sql`
+
 ### RLS
 
-Для работы клиента нужны политики (пример):
+**`users`** — пользователь видит и создаёт только свою строку:
 
 ```sql
--- insert своей строки
 create policy "Users can insert own profile"
   on public.users for insert to authenticated
   with check (auth.uid() = id);
 
--- чтение своей строки
 create policy "Users can read own profile"
   on public.users for select to authenticated
   using (auth.uid() = id);
 ```
+
+**`goods` и `stock`** — любой авторизованный пользователь (политики в `002_create_stock.sql`, `003_create_goods.sql`):
+
+```sql
+create policy "Authenticated users can read stock"
+  on public.stock for select to authenticated using (true);
+-- аналогично insert / update / delete
+```
+
+### Realtime
+
+Для таблиц `goods` и `stock` включён Supabase Realtime. SQL (если не включено в Dashboard):
+
+```sql
+alter publication supabase_realtime add table public.goods;
+alter publication supabase_realtime add table public.stock;
+```
+
+Файл: `packages/supabase/migrations/004_enable_realtime.sql`
+
+| Таблица | Поведение в приложении |
+|---------|------------------------|
+| `goods` | `GoodsRealtimeService` → upsert/delete в Drift |
+| `stock` | `StockCubit` → тихое обновление UI (`loadStock(silent: true)`) |
+
+Подписки активны только в авторизованной зоне (нужна JWT-сессия).
 
 ---
 
@@ -360,6 +462,7 @@ ThemeData(
 Используется `build_runner` для:
 
 - **injectable** → `*.config.dart`, `injection.module.dart`
+- **drift** → `app_database.g.dart` (в `local_reference`)
 - **auto_route** → `app_router.gr.dart` (только в app)
 
 ### Порядок после изменений DI / роутов
@@ -371,7 +474,9 @@ dart pub get
 # supabase (если менялся injectable)
 cd packages/supabase && dart run build_runner build
 
-# profile, authorization, registration — по необходимости
+# local_reference (drift + injectable), stock, profile, authorization, registration
+cd packages/local_reference && dart run build_runner build
+cd packages/stock && dart run build_runner build
 cd packages/profile && dart run build_runner build
 cd packages/authorization && dart run build_runner build
 cd packages/registration && dart run build_runner build
@@ -539,12 +644,15 @@ void initInventoryMicroPackage() {}
 
 ## Планируемые модули
 
-В `apps/stock_pro/lib/features/` есть заготовки (пока пустые):
+| Модуль | Статус |
+|--------|--------|
+| `packages/stock` | Реализован (вкладка «Склад») |
+| `packages/local_reference` | Реализован (`goods`; расширяемо для других справочников) |
+| `packages/sales` | Не реализован; заглушка `SalesPage` в app |
+| CRUD склада / товаров | Не реализован (только чтение) |
+| Route guards | Не реализованы |
 
-- `inventory/` — учёт складских остатков
-- `sales/` — продажи
-
-В `pubspec.yaml` приложения уже подключены `drift`, `dio`, `retrofit` — для будущих data-слоёв.
+В `pubspec.yaml` приложения подключены `dio`, `retrofit` — для будущих REST-слоёв.
 
 ---
 
@@ -561,6 +669,20 @@ void initInventoryMicroPackage() {}
 **Задача: изменить отображение профиля**  
 → `packages/profile/lib/src/presentation/profile_screen.dart`  
 → данные: `packages/profile/lib/src/data/repositories/supabase_profile_repository.dart`
+
+**Задача: изменить экран склада**  
+→ UI: `packages/stock/lib/src/presentation/stock_screen.dart`  
+→ логика: `packages/stock/lib/src/domain/stock_cubit.dart`  
+→ навигация: `apps/stock_pro/lib/navigation/pages/stock_page.dart`
+
+**Задача: добавить справочник в локальную БД**  
+→ Drift-таблица: `packages/local_reference/lib/src/data/database/app_database.dart`  
+→ синк: `packages/local_reference/lib/src/data/repositories/supabase_*_sync_repository.dart`  
+→ Realtime: `packages/local_reference/lib/src/domain/goods_realtime_service.dart` (по аналогии)
+
+**Задача: изменить вкладки авторизованной зоны**  
+→ `apps/stock_pro/lib/navigation/pages/authorized_shell_page.dart`  
+→ дочерние маршруты: `apps/stock_pro/lib/navigation/app_router.dart`
 
 **Задача: добавить маршрут**  
 → `app_router.dart` + page в `lib/navigation/pages/`  

@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:local_reference_feature/local_reference_feature.dart';
 import 'package:profile_feature/profile_feature.dart';
 import 'package:registration_feature/registration_feature.dart';
+import 'package:sales_feature/sales_feature.dart';
 import 'package:stock_feature/stock_feature.dart';
 import 'package:stock_pro/di/injection.config.dart';
 import 'package:supabase_feature/supabase_feature.dart';
@@ -60,6 +61,7 @@ void registerPreDependencies() {
     ExternalModule(ProfileFeaturePackageModule),
     ExternalModule(AuthorizationFeaturePackageModule),
     ExternalModule(RegistrationFeaturePackageModule),
+    ExternalModule(SalesFeaturePackageModule),
     ExternalModule(StockFeaturePackageModule),
   ],
 )

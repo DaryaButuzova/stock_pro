@@ -9,8 +9,15 @@ class ReferenceSyncService {
 
   final GoodsSyncRepository _goodsSyncRepository;
 
+  Future<void>? _inFlightSync;
+
   /// Syncs all reference tables from Supabase into local storage.
-  Future<void> syncAll() async {
-    await _goodsSyncRepository.syncAll();
+  ///
+  /// Concurrent calls share the same in-flight request to avoid duplicate
+  /// network/DB work when multiple features load at once.
+  Future<void> syncAll() {
+    return _inFlightSync ??= _goodsSyncRepository.syncAll().whenComplete(() {
+      _inFlightSync = null;
+    });
   }
 }

@@ -28,6 +28,8 @@ dependencies:
   registration_feature:
     path: ../../packages/registration
   retrofit: ^4.4.2
+  sales_feature:
+    path: ../../packages/sales
   stock_feature:
     path: ../../packages/stock
   supabase_feature:

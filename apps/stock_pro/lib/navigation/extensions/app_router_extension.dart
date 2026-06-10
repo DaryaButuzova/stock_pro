@@ -20,7 +20,7 @@ extension AppRouterNavigation on StackRouter {
     unawaited(pushPath(AppRoutes.registration));
   }
 
-  /// Replaces the current route with the authorized zone (sales tab).
+  /// Replaces the current route with the authorized zone (profile tab).
   void replaceWithAuthorized() {
     unawaited(replacePath(AppRoutes.authorized));
   }

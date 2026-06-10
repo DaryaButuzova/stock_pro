@@ -3,3 +3,6 @@
 
 alter publication supabase_realtime add table public.goods;
 alter publication supabase_realtime add table public.stock;
+alter publication supabase_realtime add table public.sales;
+alter publication supabase_realtime add table public.goods_in_sales;
+alter publication supabase_realtime add table public.stock_movement;
