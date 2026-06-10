@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
-
-import 'user_role.dart';
+import 'package:profile_feature/profile_feature.dart';
 
 /// Registration form payload.
 class RegistrationData extends Equatable {

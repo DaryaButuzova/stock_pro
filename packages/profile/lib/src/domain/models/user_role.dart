@@ -1,9 +1,9 @@
 /// Application user role stored in Supabase `users.role`.
 enum UserRole {
-  /// Regular staff member.
+  /// Regular staff member — checkout and read-only stock.
   staff('staff'),
 
-  /// Administrator.
+  /// Administrator — stock management and sales history.
   admin('admin');
 
   const UserRole(this.value);
@@ -16,4 +16,12 @@ enum UserRole {
     UserRole.staff => 'Сотрудник',
     UserRole.admin => 'Администратор',
   };
+
+  /// Parses a database value, defaulting to [staff] for unknown values.
+  static UserRole fromDbValue(String? value) {
+    return UserRole.values.firstWhere(
+      (role) => role.value == value,
+      orElse: () => UserRole.staff,
+    );
+  }
 }

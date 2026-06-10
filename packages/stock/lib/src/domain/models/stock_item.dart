@@ -22,8 +22,8 @@ class StockItem {
     return StockItem(
       goodsId: json['goods_id'] as String,
       goodsAddr: json['goods_addr'] as String? ?? '',
-      count: json['count'] as int? ?? 0,
-      minCount: json['min_count'] as int? ?? 0,
+      count: (json['count'] as num?)?.toInt() ?? 0,
+      minCount: (json['min_count'] as num?)?.toInt() ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }

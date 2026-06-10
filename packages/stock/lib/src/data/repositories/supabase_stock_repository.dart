@@ -21,4 +21,40 @@ class SupabaseStockRepository implements StockRepository {
         .map((item) => StockItem.fromJson(item as Map<String, dynamic>))
         .toList();
   }
+
+  @override
+  Future<StockItem> replenishStock({
+    required String goodsId,
+    required int count,
+    String? comment,
+  }) async {
+    final data = await _supabaseService.client.rpc(
+      'replenish_stock',
+      params: {
+        'p_goods_id': goodsId,
+        'p_count': count,
+        if (comment != null && comment.isNotEmpty) 'p_comment': comment,
+      },
+    );
+
+    return StockItem.fromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<StockItem> writeOffStock({
+    required String goodsId,
+    required int count,
+    String? comment,
+  }) async {
+    final data = await _supabaseService.client.rpc(
+      'write_off_stock',
+      params: {
+        'p_goods_id': goodsId,
+        'p_count': count,
+        if (comment != null && comment.isNotEmpty) 'p_comment': comment,
+      },
+    );
+
+    return StockItem.fromJson(data as Map<String, dynamic>);
+  }
 }

@@ -4,7 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../domain/models/registration_data.dart';
-import '../domain/models/user_role.dart';
+import 'package:profile_feature/profile_feature.dart';
 import '../domain/registration_cubit.dart';
 
 final _getIt = GetIt.instance;

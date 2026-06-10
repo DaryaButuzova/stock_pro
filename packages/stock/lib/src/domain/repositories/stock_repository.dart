@@ -6,4 +6,18 @@ import '../models/stock_item.dart';
 abstract class StockRepository {
   /// Returns all stock records.
   Future<List<StockItem>> getStockItems();
+
+  /// Adds quantity to a stock record (admin only).
+  Future<StockItem> replenishStock({
+    required String goodsId,
+    required int count,
+    String? comment,
+  });
+
+  /// Removes quantity from a stock record (admin only).
+  Future<StockItem> writeOffStock({
+    required String goodsId,
+    required int count,
+    String? comment,
+  });
 }

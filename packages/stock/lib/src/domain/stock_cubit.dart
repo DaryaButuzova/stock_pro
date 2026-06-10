@@ -42,6 +42,59 @@ class StockCubit extends Cubit<StockState> {
         .subscribe();
   }
 
+  /// Returns an error message on failure.
+  Future<String?> replenishStock({
+    required String goodsId,
+    required int count,
+    String? comment,
+  }) async {
+    if (this.state is! StockLoaded) return null;
+    if (count <= 0) return 'Количество должно быть больше нуля';
+
+    try {
+      await _stockRepository.replenishStock(
+        goodsId: goodsId,
+        count: count,
+        comment: comment,
+      );
+      await loadStock(silent: true);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Returns an error message on failure.
+  Future<String?> writeOffStock({
+    required String goodsId,
+    required int count,
+    String? comment,
+  }) async {
+    final state = this.state;
+    if (state is! StockLoaded) return null;
+    if (count <= 0) return 'Количество должно быть больше нуля';
+
+    final item = state.items
+        .where((entry) => entry.goodsId == goodsId)
+        .firstOrNull;
+    final available = item?.count ?? 0;
+    if (count > available) {
+      return 'Недостаточно на складе (доступно: $available)';
+    }
+
+    try {
+      await _stockRepository.writeOffStock(
+        goodsId: goodsId,
+        count: count,
+        comment: comment,
+      );
+      await loadStock(silent: true);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   Future<void> loadStock({bool silent = false}) async {
     if (!silent) emit(StockLoading());
     try {
@@ -75,5 +128,13 @@ class StockCubit extends Cubit<StockState> {
       await _supabaseService.client.removeChannel(channel);
     }
     return super.close();
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    if (!iterator.moveNext()) return null;
+    return iterator.current;
   }
 }

@@ -11,6 +11,7 @@ import 'package:profile_feature/src/data/repositories/supabase_profile_repositor
 import 'package:profile_feature/src/domain/profile_cubit.dart' as _i519;
 import 'package:profile_feature/src/domain/repositories/profile_repository.dart'
     as _i249;
+import 'package:profile_feature/src/domain/user_session_cubit.dart' as _i1062;
 import 'package:supabase_feature/supabase_feature.dart' as _i375;
 
 class ProfileFeaturePackageModule extends _i526.MicroPackageModule {
@@ -21,5 +22,7 @@ class ProfileFeaturePackageModule extends _i526.MicroPackageModule {
         () => _i242.SupabaseProfileRepository(gh<_i375.SupabaseService>()));
     gh.factory<_i519.ProfileCubit>(
         () => _i519.ProfileCubit(gh<_i249.ProfileRepository>()));
+    gh.factory<_i1062.UserSessionCubit>(
+        () => _i1062.UserSessionCubit(gh<_i249.ProfileRepository>()));
   }
 }

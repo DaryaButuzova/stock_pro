@@ -1,3 +1,5 @@
+import 'user_role.dart';
+
 /// User profile entity.
 class UserProfile {
   const UserProfile({
@@ -14,12 +16,11 @@ class UserProfile {
   final String role;
   final DateTime? createdAt;
 
+  /// Parsed application role.
+  UserRole get roleEnum => UserRole.fromDbValue(role);
+
   /// Human-readable role label.
-  String get roleLabel => switch (role) {
-    'admin' => 'Администратор',
-    'staff' => 'Сотрудник',
-    _ => role,
-  };
+  String get roleLabel => roleEnum.label;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(

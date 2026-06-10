@@ -15,6 +15,8 @@ import 'package:sales_feature/src/domain/repositories/goods_in_sales_repository.
     as _i648;
 import 'package:sales_feature/src/domain/repositories/sales_repository.dart'
     as _i217;
+import 'package:sales_feature/src/domain/admin_sales_history_cubit.dart'
+    as _i1043;
 import 'package:sales_feature/src/domain/sales_cubit.dart' as _i925;
 import 'package:stock_feature/stock_feature.dart' as _i922;
 import 'package:supabase_feature/supabase_feature.dart' as _i375;
@@ -34,5 +36,11 @@ class SalesFeaturePackageModule extends _i526.MicroPackageModule {
           gh<_i922.StockRepository>(),
           gh<_i804.ReferenceSyncService>(),
         ));
+    gh.factory<_i1043.AdminSalesHistoryCubit>(
+        () => _i1043.AdminSalesHistoryCubit(
+              gh<_i217.SalesRepository>(),
+              gh<_i648.GoodsInSalesRepository>(),
+              gh<_i804.GoodsRepository>(),
+            ));
   }
 }

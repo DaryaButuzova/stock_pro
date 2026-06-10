@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:local_reference_feature/local_reference_feature.dart';
+import 'package:profile_feature/profile_feature.dart';
 import 'package:stock_pro/di/injection.dart';
 import 'package:stock_pro/navigation/app_router.dart';
 
@@ -31,7 +33,9 @@ class _AuthorizedShellPageState extends State<AuthorizedShellPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AutoTabsScaffold(
+    return BlocProvider(
+      create: (_) => getIt<UserSessionCubit>(),
+      child: AutoTabsScaffold(
       routes: const [
         SalesPageRoute(),
         StockPageRoute(),
@@ -60,6 +64,7 @@ class _AuthorizedShellPageState extends State<AuthorizedShellPage> {
           ],
         );
       },
+      ),
     );
   }
 }

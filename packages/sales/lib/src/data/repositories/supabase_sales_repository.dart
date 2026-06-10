@@ -2,6 +2,7 @@ import 'package:injectable/injectable.dart';
 import 'package:supabase_feature/supabase_feature.dart';
 
 import '../../domain/models/sale.dart';
+import '../../domain/models/sale_history_entry.dart';
 import '../../domain/models/sale_status.dart';
 import '../../domain/repositories/sales_repository.dart';
 
@@ -76,5 +77,20 @@ class SupabaseSalesRepository implements SalesRepository {
         .delete()
         .eq('id', saleId)
         .eq('status', SaleStatus.draft.toDbValue());
+  }
+
+  @override
+  Future<List<SaleHistoryEntry>> getCompletedSales() async {
+    final data = await _supabaseService.client
+        .from('sales')
+        .select('*, users(creds)')
+        .eq('status', SaleStatus.completed.toDbValue())
+        .order('completed_at', ascending: false);
+
+    return (data as List<dynamic>)
+        .map(
+          (row) => SaleHistoryEntry.fromJson(row as Map<String, dynamic>),
+        )
+        .toList();
   }
 }

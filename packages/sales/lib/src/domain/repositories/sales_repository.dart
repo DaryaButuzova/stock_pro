@@ -1,4 +1,5 @@
 import '../models/sale.dart';
+import '../models/sale_history_entry.dart';
 
 /// Persistence for `public.sales`.
 abstract class SalesRepository {
@@ -19,4 +20,7 @@ abstract class SalesRepository {
 
   /// Removes an empty draft sale. No-op if the sale is not a draft.
   Future<void> deleteDraftSale(String saleId);
+
+  /// Returns completed sales for admin history (newest first).
+  Future<List<SaleHistoryEntry>> getCompletedSales();
 }
