@@ -14,6 +14,7 @@ Flutter-приложение для учёта продаж и складски�
 - [Пакеты](#пакеты)
 - [Приложение stock_pro](#приложение-stock_pro)
 - [Навигация и зоны](#навигация-и-зоны)
+- [Роли staff / admin](#роли-staff--admin)
 - [Dependency Injection](#dependency-injection)
 - [Supabase](#supabase)
 - [UI Kit](#ui-kit)
@@ -64,8 +65,9 @@ stock_pro/
     ├── local_reference/         # локальные справочники (Drift) + Realtime sync
     ├── authorization/           # вход
     ├── registration/            # регистрация
-    ├── profile/                 # профиль (вкладка авторизованной зоны)
-    └── stock/                   # складской учёт (вкладка авторизованной зоны)
+    ├── profile/                 # профиль, роли, UserSession
+    ├── sales/                   # продажи (касса staff / история admin)
+    └── stock/                   # склад (просмотр staff / управление admin)
 ```
 
 **Принцип:** бизнес-логика и UI фичи — в `packages/<feature>/`. Приложение только собирает фичи: DI, роутинг, callbacks навигации.
@@ -123,9 +125,11 @@ apps/stock_pro
     ├── authorization_feature
     ├── registration_feature  → profile_feature, supabase_feature
     ├── profile_feature         → supabase_feature, ui_kit
+    ├── sales_feature           → local_reference_feature, stock_feature, supabase_feature, ui_kit
     └── stock_feature           → local_reference_feature, supabase_feature, ui_kit
 
 local_reference_feature         → supabase_feature
+sales_feature                   → local_reference_feature, stock_feature, supabase_feature, ui_kit
 stock_feature                   → local_reference_feature, supabase_feature, ui_kit
 supabase_feature                # без зависимостей на другие фичи
 authorization_feature           → supabase_feature, ui_kit
@@ -177,7 +181,7 @@ authorization_feature           → supabase_feature, ui_kit
 | Компонент | Описание |
 |-----------|----------|
 | `RegistrationData` | DTO формы: ФИО, email, password, `UserRole` |
-| `UserRole` | `staff` / `admin` |
+| `UserRole` | `staff` / `admin` (определён в `profile`, реэкспортируется из `registration`) |
 | `RegistrationRepository` | Контракт: `register(RegistrationData)` → `RegistrationResult` (только auth sign-up) |
 | `SupabaseRegistrationRepository` | `auth.signUp` + metadata (`creds`, `role`) |
 | `RegistrationCubit` | Оркестрация: sign-up → при `hasSession` вызывает `ProfileRepository.createProfile()` |
@@ -194,8 +198,29 @@ authorization_feature           → supabase_feature, ui_kit
 | `UserProfile` | Модель: id, creds, email, role, createdAt |
 | `ProfileRepository` | Контракт: `getCurrentUserId`, `getProfile`, `createProfile`, `signOut` |
 | `SupabaseProfileRepository` | Чтение/запись таблицы `users`, signOut через auth |
-| `ProfileCubit` | Загрузка профиля, logout |
+| `UserRole` | `staff` / `admin`; парсинг из `users.role` |
+| `UserSessionCubit` | Загрузка профиля для авторизованной зоны (роль для `RoleGate`) |
+| `RoleGate` | Виджет: разный UI для `staff` и `admin` на одной вкладке |
+| `ProfileCubit` | Загрузка профиля на вкладке «Профиль», logout |
 | `ProfileScreen` | Отображение ФИО, email, роли; callback: `onUnauthenticated` |
+
+### `packages/sales`
+
+Продажи и корзина.
+
+| Компонент | Описание |
+|-----------|----------|
+| `Sale`, `SaleStatus` | Документ `public.sales` (`draft` / `completed` / `cancelled`) |
+| `GoodsInSale` | Строка корзины `public.goods_in_sales` |
+| `SalesRepository` | Draft-корзина, `completeSale`, история для admin |
+| `SalesCubit` | Касса: корзина, оформление, ленивое создание draft |
+| `SalesScreen` | UI кассы для **staff** |
+| `AdminSalesHistoryCubit` | Список завершённых продаж для **admin** |
+| `AdminSalesHistoryScreen` | История продаж: список + детали по тапу |
+
+Импорт: `package:sales_feature/sales_feature.dart`
+
+**Корзина (staff):** draft создаётся только при добавлении первого товара; пустые draft удаляются. После `complete_sale` новый пустой draft не создаётся.
 
 ### `packages/local_reference`
 
@@ -207,7 +232,7 @@ authorization_feature           → supabase_feature, ui_kit
 | `GoodsTable` | Локальная копия `public.goods` |
 | `GoodsRepository` | Чтение из локальной БД (`getById`, `getAll`) |
 | `GoodsSyncRepository` | Полный синк и инкрементальные изменения из Realtime |
-| `ReferenceSyncService` | Оркестратор синка всех справочников |
+| `ReferenceSyncService` | Оркестратор синка; параллельные вызовы объединяются в один |
 | `GoodsRealtimeService` | Подписка на `public.goods` → обновление Drift |
 
 Импорт: `package:local_reference_feature/local_reference_feature.dart`
@@ -219,10 +244,11 @@ authorization_feature           → supabase_feature, ui_kit
 | Компонент | Описание |
 |-----------|----------|
 | `StockItem` | Модель строки `public.stock` (PK: `goods_id`) |
-| `StockRepository` | Контракт: `getStockItems()` |
-| `SupabaseStockRepository` | Чтение из Supabase |
-| `StockCubit` | Загрузка склада + названия товаров из `GoodsRepository`; Realtime на `stock` |
-| `StockScreen` | Список позиций, подсветка низкого остатка, pull-to-refresh |
+| `StockRepository` | `getStockItems`, `replenishStock`, `writeOffStock` (RPC, admin) |
+| `SupabaseStockRepository` | Чтение и RPC `replenish_stock` / `write_off_stock` |
+| `StockCubit` | Загрузка склада + Realtime; методы пополнения/списания |
+| `StockScreen` | Список позиций (только чтение) — **staff** |
+| `AdminStockScreen` | То же + кнопки «Пополнить» / «Списать» — **admin** |
 
 Импорт: `package:stock_feature/stock_feature.dart`
 
@@ -256,7 +282,7 @@ AuthorizationScreen(
 
 Пути — в `navigation/routes/app_routes.dart`. Навигация — через extension `AppRouterNavigation` (`navigation/extensions/app_router_extension.dart`): `replaceWithAuthorized()`, `replaceWithStock()`, `replaceWithProfile()`, `pushRegistration()`, `replaceWithAuthorization()` и т.д.
 
-Заглушка продаж (`SalesPage`) живёт в `navigation/pages/` до выделения в отдельный пакет.
+`SalesPage` и `StockPage` используют `RoleGate` из `profile` для выбора экрана по роли.
 
 ---
 
@@ -269,25 +295,41 @@ AuthorizationScreen(
 | Неавторизованная | `/authorization` (initial) | `AuthorizationPage` | `AuthorizationScreen` |
 | Неавторизованная | `/registration` | `RegistrationPage` | `RegistrationScreen` |
 | Авторизованная | `/authorized` | `AuthorizedShellPage` | shell с `AutoTabsScaffold` |
-| Авторизованная | `/authorized/sales` | `SalesPage` | заглушка «Продажи» |
-| Авторизованная | `/authorized/stock` | `StockPage` | `StockScreen` |
-| Авторизованная | `/authorized/profile` | `ProfilePage` | `ProfileScreen` |
+| Авторизованная | `/authorized/sales` | `SalesPage` | `SalesScreen` (staff) / `AdminSalesHistoryScreen` (admin) |
+| Авторизованная | `/authorized/stock` | `StockPage` | `StockScreen` (staff) / `AdminStockScreen` (admin) |
+| Авторизованная | `/authorized/profile` | `ProfilePage` | `ProfileScreen` (initial tab) |
 | Dev | `/showcase` | `UIKitShowcase` | UI Kit демо |
 
 ### Вкладки авторизованной зоны
 
 `AuthorizedShellPage` — `AutoTabsScaffold` с нижней навигацией (`NavigationBar`):
 
-1. **Продажи** — заглушка (пакет не реализован)
-2. **Склад** — `StockScreen`
-3. **Профиль** — `ProfileScreen`
+1. **Продажи** — касса (staff) или история продаж (admin)
+2. **Склад** — просмотр (staff) или пополнение/списание (admin)
+3. **Профиль** — `ProfileScreen` (**стартовая вкладка** после входа)
 
-При входе в shell запускается `GoodsRealtimeService` (подписка на `goods`).
+`AuthorizedShellPage` предоставляет `UserSessionCubit` всем вкладкам и запускает `GoodsRealtimeService` (подписка на `goods`).
+
+---
+
+## Роли staff / admin
+
+Роль хранится в `public.users.role` (`staff` | `admin`), задаётся при регистрации.
+
+| Вкладка | staff | admin |
+|---------|-------|-------|
+| Продажи | Касса: корзина, оформление | История завершённых продаж (read-only) |
+| Склад | Только просмотр остатков | Пополнение и списание через RPC |
+| Профиль | Свой профиль, выход | Свой профиль, выход |
+
+**В приложении:** `UserSessionCubit` (в shell) + `RoleGate` в `SalesPage` / `StockPage`.
+
+**В Supabase:** helper-функции `is_admin()`, `is_staff()`; RLS и RPC ограничивают мутации. Прямой `UPDATE stock` отозван — только `replenish_stock` / `write_off_stock`. Черновики корзины (`draft`) создаёт только `staff`. `complete_sale` не ограничен для admin (нет UI корзины; RPC требует свой draft с товарами).
 
 ### Потоки
 
 ```
-/authorization ──успех──► /authorized (вкладка «Продажи»)
+/authorization ──успех──► /authorized (вкладка «Профиль»)
 /registration ──сессия есть──► /authorized
 /registration ──нужно подтвердить email──► /authorization (+ snackbar)
 /authorized/profile ──выход──► /authorization
@@ -315,10 +357,11 @@ SupabaseFeaturePackageModule
   → ProfileFeaturePackageModule
   → AuthorizationFeaturePackageModule
   → RegistrationFeaturePackageModule
+  → SalesFeaturePackageModule
   → StockFeaturePackageModule
 ```
 
-Порядок важен: `local_reference` нужен `SupabaseService`; `registration` нужен `ProfileRepository`; `stock` нужен `GoodsRepository` и `ReferenceSyncService`.
+Порядок важен: `local_reference` нужен `SupabaseService`; `registration` нужен `ProfileRepository`; `sales` нужен `GoodsRepository`, `StockRepository`, `ReferenceSyncService`; `stock` нужен `GoodsRepository` и `ReferenceSyncService`.
 
 ### Micropackage в фиче
 
@@ -397,38 +440,59 @@ SQL: `packages/supabase/migrations/001_create_users.sql`
 | `count` | int4 | Текущее количество |
 | `min_count` | int4 | Минимальный порог (алерт «Мало») |
 
-SQL: `002_create_stock.sql`
+SQL: `002_create_stock.sql`. Прямые `INSERT`/`UPDATE`/`DELETE` на `stock` отозваны в `008` — изменения только через RPC.
 
-### RLS
+### Таблицы продаж
 
-**`users`** — пользователь видит и создаёт только свою строку:
+**`public.sales`**
 
-```sql
-create policy "Users can insert own profile"
-  on public.users for insert to authenticated
-  with check (auth.uid() = id);
+| Колонка | Описание |
+|---------|----------|
+| `id` | uuid (PK) |
+| `user_id` | Продавец (FK → `users`) |
+| `status` | `draft` \| `completed` \| `cancelled` |
+| `sum`, `payment_method` | Заполняются при `complete_sale` |
+| `completed_at` | Время оформления |
 
-create policy "Users can read own profile"
-  on public.users for select to authenticated
-  using (auth.uid() = id);
-```
+Один активный `draft` на пользователя (unique index). SQL: `005_create_sales.sql`
 
-**`goods` и `stock`** — любой авторизованный пользователь (политики в `002_create_stock.sql`, `003_create_goods.sql`):
+**`public.goods_in_sales`** — позиции корзины/продажи. SQL: `006_create_goods_in_sales.sql`
 
-```sql
-create policy "Authenticated users can read stock"
-  on public.stock for select to authenticated using (true);
--- аналогично insert / update / delete
-```
+**`public.stock_movement`** — журнал движений (`sale_out`, `replenishment_in`, `write_off`). SQL: `007_create_stock_movement.sql`
+
+### RPC (PostgreSQL)
+
+| Функция | Кто | Назначение |
+|---------|-----|------------|
+| `complete_sale(sale_id, payment_method)` | staff (свой draft) | Оформление продажи, списание со склада |
+| `replenish_stock(goods_id, count, comment?)` | admin | Пополнение склада |
+| `write_off_stock(goods_id, count, comment?)` | admin | Списание со склада |
+| `is_admin()` / `is_staff()` | — | Проверка роли в RLS и RPC |
+
+### Миграции (порядок применения)
+
+| Файл | Содержание |
+|------|------------|
+| `001_create_users.sql` | Триггер `handle_new_user` |
+| `002_create_stock.sql` | RLS на `stock` (чтение) |
+| `003_create_goods.sql` | RLS на `goods` |
+| `004_enable_realtime.sql` | Realtime: `goods`, `stock`, `sales`, … |
+| `005_create_sales.sql` | Таблица `sales`, RLS |
+| `006_create_goods_in_sales.sql` | Таблица `goods_in_sales`, RLS |
+| `007_create_stock_movement.sql` | `stock_movement`, `complete_sale` |
+| `008_admin_stock_rpcs.sql` | `is_admin`, пополнение/списание, отзыв прямых мутаций `stock` |
+| `009_admin_sales_history_rls.sql` | Admin: чтение completed sales + `users.creds` |
+| `010_staff_sales_rls.sql` | `is_staff`, draft-корзина только для staff |
+
+### RLS (кратко)
+
+- **`users`:** свой профиль; admin читает все профили (для ФИО в истории продаж)
+- **`goods`:** чтение/запись для authenticated (справочник)
+- **`stock`:** чтение для authenticated; мутации — только через RPC admin
+- **`sales`:** staff — свои записи + draft-мутации; admin — чтение всех `completed`
+- **`goods_in_sales`:** staff — своя корзина (draft); admin — позиции completed продаж
 
 ### Realtime
-
-Для таблиц `goods` и `stock` включён Supabase Realtime. SQL (если не включено в Dashboard):
-
-```sql
-alter publication supabase_realtime add table public.goods;
-alter publication supabase_realtime add table public.stock;
-```
 
 Файл: `packages/supabase/migrations/004_enable_realtime.sql`
 
@@ -436,6 +500,7 @@ alter publication supabase_realtime add table public.stock;
 |---------|------------------------|
 | `goods` | `GoodsRealtimeService` → upsert/delete в Drift |
 | `stock` | `StockCubit` → тихое обновление UI (`loadStock(silent: true)`) |
+| `sales`, `goods_in_sales`, `stock_movement` | В publication; UI-подписки пока не используются |
 
 Подписки активны только в авторизованной зоне (нужна JWT-сессия).
 
@@ -474,8 +539,9 @@ dart pub get
 # supabase (если менялся injectable)
 cd packages/supabase && dart run build_runner build
 
-# local_reference (drift + injectable), stock, profile, authorization, registration
+# local_reference (drift + injectable), sales, stock, profile, authorization, registration
 cd packages/local_reference && dart run build_runner build
+cd packages/sales && dart run build_runner build
 cd packages/stock && dart run build_runner build
 cd packages/profile && dart run build_runner build
 cd packages/authorization && dart run build_runner build
@@ -646,11 +712,13 @@ void initInventoryMicroPackage() {}
 
 | Модуль | Статус |
 |--------|--------|
-| `packages/stock` | Реализован (вкладка «Склад») |
+| `packages/sales` | Реализован: касса (staff), история (admin) |
+| `packages/stock` | Реализован: просмотр (staff), пополнение/списание (admin) |
 | `packages/local_reference` | Реализован (`goods`; расширяемо для других справочников) |
-| `packages/sales` | Не реализован; заглушка `SalesPage` в app |
-| CRUD склада / товаров | Не реализован (только чтение) |
-| Route guards | Не реализованы |
+| `packages/profile` | Реализован + `UserSessionCubit`, `RoleGate` |
+| CRUD справочника `goods` в UI | Не реализован |
+| Фильтры/отчёты в истории продаж | Не реализованы |
+| Route guards | Не реализованы (роль через `RoleGate`, права через RLS/RPC) |
 
 В `pubspec.yaml` приложения подключены `dio`, `retrofit` — для будущих REST-слоёв.
 
@@ -670,10 +738,27 @@ void initInventoryMicroPackage() {}
 → `packages/profile/lib/src/presentation/profile_screen.dart`  
 → данные: `packages/profile/lib/src/data/repositories/supabase_profile_repository.dart`
 
-**Задача: изменить экран склада**  
-→ UI: `packages/stock/lib/src/presentation/stock_screen.dart`  
-→ логика: `packages/stock/lib/src/domain/stock_cubit.dart`  
-→ навигация: `apps/stock_pro/lib/navigation/pages/stock_page.dart`
+**Задача: изменить экран склада (staff)**  
+→ `packages/stock/lib/src/presentation/stock_screen.dart`  
+→ логика: `packages/stock/lib/src/domain/stock_cubit.dart`
+
+**Задача: изменить склад admin (пополнение/списание)**  
+→ `packages/stock/lib/src/presentation/admin_stock_screen.dart`  
+→ RPC: `packages/supabase/migrations/008_admin_stock_rpcs.sql`
+
+**Задача: изменить кассу / продажи staff**  
+→ UI: `packages/sales/lib/src/presentation/sales_screen.dart`  
+→ логика: `packages/sales/lib/src/domain/sales_cubit.dart`  
+→ навигация: `apps/stock_pro/lib/navigation/pages/sales_page.dart`
+
+**Задача: изменить историю продаж admin**  
+→ `packages/sales/lib/src/presentation/admin_sales_history_screen.dart`  
+→ `packages/sales/lib/src/domain/admin_sales_history_cubit.dart`
+
+**Задача: изменить поведение по роли на вкладке**  
+→ `packages/profile/lib/src/presentation/role_gate.dart`  
+→ обёртка: `apps/stock_pro/lib/navigation/pages/<tab>_page.dart`  
+→ сессия: `AuthorizedShellPage` + `UserSessionCubit`
 
 **Задача: добавить справочник в локальную БД**  
 → Drift-таблица: `packages/local_reference/lib/src/data/database/app_database.dart`  
