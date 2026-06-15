@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:injectable/injectable.dart';
 
+import 'auth_error_messages.dart';
 import 'repositories/auth_repository.dart';
 
 part 'authorization_state.dart';
@@ -18,7 +19,7 @@ class AuthorizationCubit extends Cubit<AuthorizationState> {
       await _authRepository.signIn(email: email, password: password);
       emit(AuthorizationSuccess());
     } catch (e) {
-      emit(AuthorizationFailure(e.toString()));
+      emit(AuthorizationFailure(mapSignInError(e)));
     }
   }
 
@@ -27,7 +28,7 @@ class AuthorizationCubit extends Cubit<AuthorizationState> {
       await _authRepository.signOut();
       emit(AuthorizationInitial());
     } catch (e) {
-      emit(AuthorizationFailure(e.toString()));
+      emit(AuthorizationFailure(mapSignInError(e)));
     }
   }
 }

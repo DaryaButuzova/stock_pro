@@ -3,6 +3,7 @@ import 'package:supabase_feature/supabase_feature.dart';
 
 import '../../domain/models/registration_data.dart';
 import '../../domain/models/registration_result.dart';
+import '../../domain/registration_error_messages.dart';
 import '../../domain/repositories/registration_repository.dart';
 
 @Injectable(as: RegistrationRepository)
@@ -21,7 +22,12 @@ class SupabaseRegistrationRepository implements RegistrationRepository {
 
     final user = response.user;
     if (user == null) {
-      throw Exception('Не удалось зарегистрироваться');
+      throw StateError('registration_failed');
+    }
+
+    final identities = user.identities;
+    if (identities != null && identities.isEmpty) {
+      throw const UserAlreadyRegisteredException();
     }
 
     return RegistrationResult(

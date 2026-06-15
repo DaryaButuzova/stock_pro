@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:profile_feature/profile_feature.dart';
 
 import 'models/registration_data.dart';
+import 'registration_error_messages.dart';
 import 'repositories/registration_repository.dart';
 
 part 'registration_state.dart';
@@ -35,7 +36,7 @@ class RegistrationCubit extends Cubit<RegistrationState> {
 
       emit(RegistrationSuccess(hasSession: result.hasSession));
     } catch (e) {
-      emit(RegistrationFailure(e.toString()));
+      emit(RegistrationFailure(mapRegistrationError(e)));
     }
   }
 }
