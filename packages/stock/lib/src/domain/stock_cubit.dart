@@ -8,6 +8,7 @@ import 'package:supabase_feature/supabase_feature.dart';
 
 import 'models/stock_item.dart';
 import 'repositories/stock_repository.dart';
+import 'stock_error_messages.dart';
 
 part 'stock_state.dart';
 
@@ -60,7 +61,7 @@ class StockCubit extends Cubit<StockState> {
       await loadStock(silent: true);
       return null;
     } catch (e) {
-      return e.toString();
+      return mapStockError(e);
     }
   }
 
@@ -91,7 +92,49 @@ class StockCubit extends Cubit<StockState> {
       await loadStock(silent: true);
       return null;
     } catch (e) {
-      return e.toString();
+      return mapStockError(e);
+    }
+  }
+
+  /// Returns an error message on failure.
+  Future<String?> updateStockMeta({
+    required String goodsId,
+    required String goodsAddr,
+    required int minCount,
+  }) async {
+    if (minCount < 0) return 'Минимальный остаток не может быть отрицательным';
+
+    try {
+      await _stockRepository.updateStockMeta(
+        goodsId: goodsId,
+        goodsAddr: goodsAddr.trim(),
+        minCount: minCount,
+      );
+      await loadStock(silent: true);
+      return null;
+    } catch (e) {
+      return mapStockError(e);
+    }
+  }
+
+  /// Returns an error message on failure.
+  Future<String?> deleteStockPosition(String goodsId) async {
+    final state = this.state;
+    if (state is! StockLoaded) return null;
+
+    final item = state.items
+        .where((entry) => entry.goodsId == goodsId)
+        .firstOrNull;
+    if (item != null && item.count != 0) {
+      return 'Удаление возможно только при нулевом остатке';
+    }
+
+    try {
+      await _stockRepository.deleteStockPosition(goodsId);
+      await loadStock(silent: true);
+      return null;
+    } catch (e) {
+      return mapStockError(e);
     }
   }
 

@@ -57,4 +57,48 @@ class SupabaseStockRepository implements StockRepository {
 
     return StockItem.fromJson(data as Map<String, dynamic>);
   }
+
+  @override
+  Future<StockItem> updateStockMeta({
+    required String goodsId,
+    required String goodsAddr,
+    required int minCount,
+  }) async {
+    final data = await _supabaseService.client.rpc(
+      'update_stock_meta',
+      params: {
+        'p_goods_id': goodsId,
+        'p_goods_addr': goodsAddr,
+        'p_min_count': minCount,
+      },
+    );
+
+    return StockItem.fromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<StockItem> createStockPosition({
+    required String goodsId,
+    required String goodsAddr,
+    required int minCount,
+  }) async {
+    final data = await _supabaseService.client.rpc(
+      'create_stock_position',
+      params: {
+        'p_goods_id': goodsId,
+        'p_goods_addr': goodsAddr,
+        'p_min_count': minCount,
+      },
+    );
+
+    return StockItem.fromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> deleteStockPosition(String goodsId) async {
+    await _supabaseService.client.rpc(
+      'delete_stock_position',
+      params: {'p_goods_id': goodsId},
+    );
+  }
 }

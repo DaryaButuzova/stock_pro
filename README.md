@@ -468,6 +468,9 @@ SQL: `002_create_stock.sql`. Прямые `INSERT`/`UPDATE`/`DELETE` на `stock
 | `replenish_stock(goods_id, count, comment?)` | admin | Пополнение склада |
 | `write_off_stock(goods_id, count, comment?)` | admin | Списание со склада |
 | `create_goods(name, description?, cost?, category?)` | admin | Создание товара + пустая позиция на складе |
+| `update_stock_meta(goods_id, goods_addr, min_count)` | admin | Адрес ячейки и минимальный остаток |
+| `create_stock_position(goods_id, goods_addr, min_count)` | admin | Позиция склада для существующего товара |
+| `delete_stock_position(goods_id)` | admin | Удаление позиции при нулевом остатке |
 | `is_admin()` / `is_staff()` | — | Проверка роли в RLS и RPC |
 
 ### Миграции (порядок применения)
@@ -485,12 +488,13 @@ SQL: `002_create_stock.sql`. Прямые `INSERT`/`UPDATE`/`DELETE` на `stock
 | `009_admin_sales_history_rls.sql` | Admin: чтение completed sales + `users.creds` |
 | `010_staff_sales_rls.sql` | `is_staff`, draft-корзина только для staff |
 | `011_admin_goods_rls.sql` | Admin: CRUD `goods`; RPC `create_goods` (+ строка `stock`) |
+| `012_admin_stock_meta_rpcs.sql` | Admin: метаданные позиции склада, удаление позиции |
 
 ### RLS (кратко)
 
 - **`users`:** свой профиль; admin читает все профили (для ФИО в истории продаж)
 - **`goods`:** чтение для authenticated; мутации — только admin (RLS + RPC `create_goods`)
-- **`stock`:** чтение для authenticated; мутации — только через RPC admin
+- **`stock`:** чтение для authenticated; изменение количества — RPC admin; метаданные позиции — RPC admin
 - **`sales`:** staff — свои записи + draft-мутации; admin — чтение всех `completed`
 - **`goods_in_sales`:** staff — своя корзина (draft); admin — позиции completed продаж
 
@@ -502,7 +506,7 @@ SQL: `002_create_stock.sql`. Прямые `INSERT`/`UPDATE`/`DELETE` на `stock
 |---------|------------------------|
 | `goods` | `GoodsRealtimeService` → upsert/delete в Drift |
 | `stock` | `StockCubit` → тихое обновление UI (`loadStock(silent: true)`) |
-| `sales`, `goods_in_sales`, `stock_movement` | В publication; UI-подписки пока не используются |
+| `sales`, `goods_in_sales`, `stock_movement` | В publication; `stock_movement` читается в `StockMovementHistoryScreen` (admin) |
 
 Подписки активны только в авторизованной зоне (нужна JWT-сессия).
 
@@ -715,7 +719,7 @@ void initInventoryMicroPackage() {}
 | Модуль | Статус |
 |--------|--------|
 | `packages/sales` | Реализован: касса (staff), история (admin) |
-| `packages/stock` | Реализован: просмотр (staff), пополнение/списание (admin) |
+| `packages/stock` | Реализован: просмотр (staff), пополнение/списание/метаданные/журнал (admin) |
 | `packages/local_reference` | Реализован (`goods`; расширяемо для других справочников) |
 | `packages/profile` | Реализован + `UserSessionCubit`, `RoleGate` |
 | CRUD справочника `goods` в UI | Реализован: `AdminGoodsScreen` (вход с экрана «Склад» admin) |
