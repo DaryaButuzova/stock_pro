@@ -17,6 +17,8 @@ dependencies:
   injectable: ^3.0.0
   local_reference_feature:
     path: ../local_reference
+  open_filex: ^4.7.0
+  path_provider: ^2.1.5
   stock_feature:
     path: ../stock
   supabase_feature:

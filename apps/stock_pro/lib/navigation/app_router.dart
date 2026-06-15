@@ -33,6 +33,7 @@ class AppRouter extends RootStackRouter {
         AutoRoute(
           page: SalesPageRoute.page,
           path: AppRoutes.sales,
+          initial: true,
         ),
         AutoRoute(
           page: StockPageRoute.page,
@@ -41,7 +42,6 @@ class AppRouter extends RootStackRouter {
         AutoRoute(
           page: ProfilePageRoute.page,
           path: AppRoutes.profile,
-          initial: true,
         ),
       ],
     ),

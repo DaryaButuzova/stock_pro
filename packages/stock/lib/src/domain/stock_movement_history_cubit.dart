@@ -8,6 +8,7 @@ import 'models/stock_movement_filter.dart';
 import 'models/stock_movement_summary.dart';
 import 'repositories/stock_movement_repository.dart';
 import 'stock_error_messages.dart';
+import 'stock_movement_export.dart';
 
 part 'stock_movement_history_state.dart';
 
@@ -72,6 +73,20 @@ class StockMovementHistoryCubit extends Cubit<StockMovementHistoryState> {
       goodsById: _goodsById,
       filterGoodsId: _filterGoodsId,
       typeFilter: _typeFilter,
+    );
+  }
+
+  String? buildExportCsv() {
+    final state = this.state;
+    if (state is! StockMovementHistoryLoaded) return null;
+    if (state.visibleMovements.isEmpty) return null;
+
+    return buildStockMovementCsvFromLoaded(
+      movements: state.visibleMovements,
+      goodsById: state.goodsById,
+      summary: state.summary,
+      typeFilter: state.typeFilter,
+      filterGoodsId: state.filterGoodsId,
     );
   }
 }

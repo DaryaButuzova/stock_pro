@@ -7,9 +7,27 @@ import '../domain/models/stock_movement.dart';
 import '../domain/models/stock_movement_filter.dart';
 import '../domain/models/stock_movement_summary.dart';
 import '../domain/stock_list_utils.dart';
+import '../domain/stock_movement_file_exporter.dart';
 import '../domain/stock_movement_history_cubit.dart';
 
 final _getIt = GetIt.instance;
+
+Future<void> _exportStockMovements(BuildContext context) async {
+  final csv = context.read<StockMovementHistoryCubit>().buildExportCsv();
+  if (csv == null) return;
+
+  final error = await saveStockMovementCsvAndOpen(csv);
+  if (!context.mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        error ??
+            'Отчёт сохранён и открыт. Файлы → На iPhone → Stock Pro → reports',
+      ),
+    ),
+  );
+}
 
 /// Admin view of warehouse stock movements with summary and timeline.
 class StockMovementHistoryScreen extends StatelessWidget {
@@ -54,6 +72,17 @@ class _StockMovementHistoryView extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
         actions: [
+          BlocBuilder<StockMovementHistoryCubit, StockMovementHistoryState>(
+            builder: (context, state) {
+              final canExport = state is StockMovementHistoryLoaded &&
+                  state.visibleMovements.isNotEmpty;
+              return IconButton(
+                onPressed: canExport ? () => _exportStockMovements(context) : null,
+                icon: const Icon(Icons.download_outlined),
+                tooltip: 'Экспорт CSV',
+              );
+            },
+          ),
           IconButton(
             onPressed: () => context
                 .read<StockMovementHistoryCubit>()

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:ui_kit/ui_kit.dart';
@@ -10,8 +9,26 @@ import '../domain/models/sales_dashboard_metrics.dart';
 import '../domain/models/sales_history_filter.dart';
 import '../domain/models/seller_option.dart';
 import '../domain/sales_cubit.dart';
+import '../domain/sales_report_file_exporter.dart';
 
 final _getIt = GetIt.instance;
+
+Future<void> _exportSalesReport(BuildContext context) async {
+  final csv = context.read<AdminSalesHistoryCubit>().buildExportCsv();
+  if (csv == null) return;
+
+  final error = await saveSalesReportCsvAndOpen(csv);
+  if (!context.mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        error ??
+            'Отчёт сохранён и открыт. Файлы → На iPhone → Stock Pro → reports',
+      ),
+    ),
+  );
+}
 
 /// Admin sales dashboard with drill-down to the sales list.
 class AdminSalesHistoryScreen extends StatelessWidget {
@@ -83,7 +100,7 @@ class _SalesDashboardView extends StatelessWidget {
           IconButton(
             onPressed: dashboardState == null || dashboardState.entries.isEmpty
                 ? null
-                : () => _exportCsv(context),
+                : () => _exportSalesReport(context),
             icon: const Icon(Icons.download_outlined),
             tooltip: 'Экспорт CSV',
           ),
@@ -141,18 +158,6 @@ class _SalesDashboardView extends StatelessWidget {
           context.read<AdminSalesHistoryCubit>().clearFilter();
         },
       ),
-    );
-  }
-
-  Future<void> _exportCsv(BuildContext context) async {
-    final csv = context.read<AdminSalesHistoryCubit>().buildExportCsv();
-    if (csv == null) return;
-
-    await Clipboard.setData(ClipboardData(text: csv));
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Отчёт скопирован в буфер обмена')),
     );
   }
 }
@@ -574,7 +579,7 @@ class _SalesHistoryEntriesView extends StatelessWidget {
           IconButton(
             onPressed: loaded.entries.isEmpty
                 ? null
-                : () => _exportCsv(context),
+                : () => _exportSalesReport(context),
             icon: const Icon(Icons.download_outlined),
             tooltip: 'Экспорт CSV',
           ),
@@ -598,18 +603,6 @@ class _SalesHistoryEntriesView extends StatelessWidget {
                     .openSaleDetail(loaded.entries[index]),
               ),
             ),
-    );
-  }
-
-  Future<void> _exportCsv(BuildContext context) async {
-    final csv = context.read<AdminSalesHistoryCubit>().buildExportCsv();
-    if (csv == null) return;
-
-    await Clipboard.setData(ClipboardData(text: csv));
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Отчёт скопирован в буфер обмена')),
     );
   }
 }
