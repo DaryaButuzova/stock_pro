@@ -406,16 +406,12 @@ class _StockPositionsListViewState extends State<_StockPositionsListView> {
                       style: AppTextStyles.bodyLarge,
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: visibleItems.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) => StockPositionRow(
-                      item: visibleItems[index],
-                      goodsById: loaded.goodsById,
-                      onTap: () =>
-                          cubit.openPositionDetail(visibleItems[index]),
-                    ),
+                : StockCategoryGroupedList(
+                    items: visibleItems,
+                    goodsById: loaded.goodsById,
+                    searchQuery: loaded.searchQuery,
+                    filter: loaded.filter,
+                    onItemTap: cubit.openPositionDetail,
                   ),
           ),
         ],
@@ -432,7 +428,8 @@ class _StockPositionDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = loaded.item;
-    final goodsName = loaded.goodsById[item.goodsId]?.displayName;
+    final goods = loaded.goodsById[item.goodsId];
+    final goodsName = goods?.displayName;
     final title = stockItemTitle(item, loaded.goodsById);
     final cubit = context.read<AdminStockCubit>();
 
@@ -463,6 +460,12 @@ class _StockPositionDetailView extends StatelessWidget {
                   Text(
                     goodsName ?? shortId(item.goodsId),
                     style: AppTextStyles.headingSmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Категория', style: AppTextStyles.bodySmall),
+                  Text(
+                    goodsCategoryLabel(goods),
+                    style: AppTextStyles.bodyLarge,
                   ),
                   const SizedBox(height: 16),
                   Row(

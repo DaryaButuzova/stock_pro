@@ -109,18 +109,15 @@ class _StockViewState extends State<_StockView> {
                         );
                       }
 
-                      return ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: visible.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) => StockPositionRow(
-                          item: visible[index],
+                      return StockCategoryGroupedList(
+                        items: visible,
+                        goodsById: goodsById,
+                        searchQuery: _searchQuery,
+                        filter: _filter,
+                        onItemTap: (item) => _showReadOnlyDetail(
+                          context,
+                          item: item,
                           goodsById: goodsById,
-                          onTap: () => _showReadOnlyDetail(
-                            context,
-                            item: visible[index],
-                            goodsById: goodsById,
-                          ),
                         ),
                       );
                     },
@@ -168,6 +165,11 @@ class _StockViewState extends State<_StockView> {
             Text(
               stockItemSubtitle(item, goodsById),
               style: AppTextStyles.bodyMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Категория: ${goodsCategoryLabel(goodsById[item.goodsId])}',
+              style: AppTextStyles.bodySmall,
             ),
             const SizedBox(height: 16),
             Row(
