@@ -4,20 +4,24 @@ import 'package:get_it/get_it.dart';
 import 'package:local_reference_feature/local_reference_feature.dart';
 import 'package:ui_kit/ui_kit.dart';
 
-import '../domain/models/stock_item.dart';
-import '../domain/stock_cubit.dart';
+import '../domain/admin_stock_cubit.dart';
+import '../domain/models/stock_dashboard_metrics.dart';
+import '../domain/models/stock_positions_filter.dart';
+import '../domain/stock_list_utils.dart';
+import 'stock_action_dialogs.dart';
 import 'stock_movement_history_screen.dart';
+import 'stock_widgets.dart';
 
 final _getIt = GetIt.instance;
 
-/// Admin warehouse screen with replenish and write-off actions.
+/// Admin warehouse dashboard with drill-down to positions and actions.
 class AdminStockScreen extends StatelessWidget {
   const AdminStockScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => _getIt<StockCubit>(),
+      create: (_) => _getIt<AdminStockCubit>(),
       child: const _AdminStockView(),
     );
   }
@@ -25,6 +29,34 @@ class AdminStockScreen extends StatelessWidget {
 
 class _AdminStockView extends StatelessWidget {
   const _AdminStockView();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<AdminStockCubit, AdminStockState>(
+      listener: (context, state) {
+        if (state is AdminStockFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.error)),
+          );
+        }
+      },
+      builder: (context, state) {
+        return switch (state) {
+          AdminStockPositionDetailLoaded loaded =>
+            _StockPositionDetailView(loaded: loaded),
+          AdminStockPositionsLoaded loaded =>
+            _StockPositionsListView(loaded: loaded),
+          _ => _StockDashboardView(state: state),
+        };
+      },
+    );
+  }
+}
+
+class _StockDashboardView extends StatelessWidget {
+  const _StockDashboardView({required this.state});
+
+  final AdminStockState state;
 
   @override
   Widget build(BuildContext context) {
@@ -51,283 +83,485 @@ class _AdminStockView extends StatelessWidget {
             tooltip: 'Справочник товаров',
           ),
           IconButton(
-            onPressed: () => context.read<StockCubit>().loadStock(),
+            onPressed: () => context.read<AdminStockCubit>().loadStock(),
             icon: const Icon(Icons.refresh),
           ),
         ],
       ),
-      body: BlocConsumer<StockCubit, StockState>(
-        listener: (context, state) {
-          if (state is StockFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error)),
-            );
-          }
-        },
-        builder: (context, state) {
-          return switch (state) {
-            StockInitial() || StockLoading() => const Center(
-              child: CircularProgressIndicator(),
-            ),
-            StockLoaded(:final items) when items.isEmpty => Center(
-              child: Text(
-                'Нет записей на складе',
-                style: AppTextStyles.bodyLarge,
+      body: switch (state) {
+        AdminStockInitial() || AdminStockLoading() =>
+          const Center(child: CircularProgressIndicator()),
+        AdminStockDashboardLoaded loaded when loaded.items.isEmpty =>
+          Center(
+            child: Text('Нет записей на складе', style: AppTextStyles.bodyLarge),
+          ),
+        AdminStockDashboardLoaded loaded => _StockDashboardBody(
+          metrics: loaded.metrics,
+          goodsById: loaded.goodsById,
+        ),
+        AdminStockFailure() => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Не удалось загрузить склад', style: AppTextStyles.bodyLarge),
+              const SizedBox(height: 16),
+              AppButton(
+                text: 'Повторить',
+                onPressed: () => context.read<AdminStockCubit>().loadStock(),
+              ),
+            ],
+          ),
+        ),
+        _ => const SizedBox.shrink(),
+      },
+    );
+  }
+}
+
+class _StockDashboardBody extends StatelessWidget {
+  const _StockDashboardBody({
+    required this.metrics,
+    required this.goodsById,
+  });
+
+  final StockDashboardMetrics metrics;
+  final Map<String, Goods> goodsById;
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<AdminStockCubit>();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _SummaryHeroCard(
+          metrics: metrics,
+          onTap: () => cubit.openPositionsList(),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricTile(
+                icon: Icons.inventory_2_outlined,
+                iconColor: AppColors.primary,
+                backgroundColor: AppColors.primarySubtle,
+                label: 'Позиций',
+                value: '${metrics.totalPositions}',
+                subtitle: '${metrics.totalUnits} ед.',
               ),
             ),
-            StockLoaded(:final items, :final goodsById) => ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _AdminStockCard(
-                key: ValueKey(items[index].goodsId),
-                item: items[index],
-                goodsName: goodsById[items[index].goodsId]?.displayName,
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricTile(
+                icon: Icons.warning_amber_rounded,
+                iconColor: AppColors.warning,
+                backgroundColor: AppColors.warningSubtle,
+                label: 'Мало',
+                value: '${metrics.lowStockCount}',
+                subtitle: 'требует внимания',
               ),
             ),
-            StockFailure() => Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _MetricTile(
+                icon: Icons.remove_circle_outline,
+                iconColor: AppColors.error,
+                backgroundColor: AppColors.errorSubtle,
+                label: 'Нулевой',
+                value: '${metrics.zeroStockCount}',
+                subtitle: 'остаток 0',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MetricTile(
+                icon: Icons.place_outlined,
+                iconColor: AppColors.secondaryDark,
+                backgroundColor: AppColors.secondaryMuted,
+                label: 'Без адреса',
+                value: '${metrics.noAddressCount}',
+                subtitle: 'позиций',
+              ),
+            ),
+          ],
+        ),
+        if (metrics.attentionItems.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Text('Требует внимания', style: AppTextStyles.headingSmall),
+              const Spacer(),
+              TextButton(
+                onPressed: () => cubit.openPositionsList(
+                  filter: StockPositionsFilter.lowStock,
+                ),
+                child: const Text('Все'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...metrics.attentionItems.take(5).map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: StockPositionRow(
+                item: item,
+                goodsById: goodsById,
+                onTap: () => cubit.openPositionDetail(item),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SummaryHeroCard extends StatelessWidget {
+  const _SummaryHeroCard({
+    required this.metrics,
+    required this.onTap,
+  });
+
+  final StockDashboardMetrics metrics;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Text('Не удалось загрузить склад', style: AppTextStyles.bodyLarge),
-                  const SizedBox(height: 16),
-                  AppButton(
-                    text: 'Повторить',
-                    onPressed: () => context.read<StockCubit>().loadStock(),
+                  Text(
+                    'Все позиции',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.onPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.chevron_right,
+                    color: AppColors.onPrimary.withValues(alpha: 0.9),
                   ),
                 ],
               ),
-            ),
-          };
-        },
+              const SizedBox(height: 12),
+              Text(
+                '${metrics.totalUnits} ед.',
+                style: AppTextStyles.headingLarge.copyWith(
+                  color: AppColors.onPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${metrics.totalPositions} позиций на складе',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.onPrimary.withValues(alpha: 0.85),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-class _AdminStockCard extends StatelessWidget {
-  const _AdminStockCard({
-    required this.item,
-    this.goodsName,
-    super.key,
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({
+    required this.icon,
+    required this.iconColor,
+    required this.backgroundColor,
+    required this.label,
+    required this.value,
+    required this.subtitle,
   });
 
-  final StockItem item;
-  final String? goodsName;
+  final IconData icon;
+  final Color iconColor;
+  final Color backgroundColor;
+  final String label;
+  final String value;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: item.isLowStock ? AppColors.warningSubtle : null,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.goodsAddr.isNotEmpty
-                        ? item.goodsAddr
-                        : 'Без адреса',
-                    style: AppTextStyles.headingSmall,
-                  ),
-                ),
-                if (item.isLowStock)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Мало',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textInverse,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Товар: ${goodsName ?? _shortId(item.goodsId)}',
-              style: AppTextStyles.bodyMedium,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _Metric(label: 'Кол-во', value: '${item.count}'),
-                const SizedBox(width: 24),
-                _Metric(label: 'Мин.', value: '${item.minCount}'),
-              ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: iconColor),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    text: 'Пополнить',
-                    onPressed: () => _showAdjustDialog(
-                      context,
-                      title: 'Пополнение',
-                      maxCount: null,
-                      onSubmit: (count, comment) =>
-                          context.read<StockCubit>().replenishStock(
-                            goodsId: item.goodsId,
-                            count: count,
-                            comment: comment,
-                          ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: item.count > 0
-                      ? AppButton(
-                          text: 'Списать',
-                          onPressed: () => _showAdjustDialog(
-                            context,
-                            title: 'Списание',
-                            maxCount: item.count,
-                            onSubmit: (count, comment) =>
-                                context.read<StockCubit>().writeOffStock(
-                                  goodsId: item.goodsId,
-                                  count: count,
-                                  comment: comment,
-                                ),
-                          ),
-                        )
-                      : AppButton(
-                          text: 'Удалить',
-                          variant: AppButtonVariant.outlined,
-                          onPressed: () => _confirmDelete(context),
-                        ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: () => _showMetaDialog(context),
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Параметры'),
-                ),
-                TextButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => StockMovementHistoryScreen(
-                        goodsId: item.goodsId,
-                        goodsName: goodsName ?? item.displayLabel,
-                      ),
-                    ),
-                  ),
-                  icon: const Icon(Icons.history, size: 18),
-                  label: const Text('Движения'),
-                ),
-              ],
-            ),
+            Text(label, style: AppTextStyles.bodySmall),
+            const SizedBox(height: 4),
+            Text(value, style: AppTextStyles.headingSmall),
+            const SizedBox(height: 2),
+            Text(subtitle, style: AppTextStyles.caption),
           ],
         ),
       ),
     );
   }
+}
 
-  String _shortId(String id) {
-    if (id.length <= 8) return id;
-    return '${id.substring(0, 8)}…';
+class _StockPositionsListView extends StatefulWidget {
+  const _StockPositionsListView({required this.loaded});
+
+  final AdminStockPositionsLoaded loaded;
+
+  @override
+  State<_StockPositionsListView> createState() =>
+      _StockPositionsListViewState();
+}
+
+class _StockPositionsListViewState extends State<_StockPositionsListView> {
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(text: widget.loaded.searchQuery);
   }
 
-  Future<void> _showMetaDialog(BuildContext context) async {
-    final result = await showDialog<({String goodsAddr, int minCount})>(
-      context: context,
-      builder: (dialogContext) => _StockMetaDialog(
-        goodsAddr: item.goodsAddr,
-        minCount: item.minCount,
-      ),
-    );
-
-    if (result == null || !context.mounted) return;
-
-    final error = await context.read<StockCubit>().updateStockMeta(
-      goodsId: item.goodsId,
-      goodsAddr: result.goodsAddr,
-      minCount: result.minCount,
-    );
-
-    if (error != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+  @override
+  void didUpdateWidget(covariant _StockPositionsListView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.loaded.searchQuery != widget.loaded.searchQuery &&
+        _searchController.text != widget.loaded.searchQuery) {
+      _searchController.text = widget.loaded.searchQuery;
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final label = goodsName ?? _shortId(item.goodsId);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Удалить позицию?'),
-        content: Text(
-          'Позиция «$label» будет удалена со склада. Товар в справочнике останется.',
-          style: AppTextStyles.bodyMedium,
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loaded = widget.loaded;
+    final cubit = context.read<AdminStockCubit>();
+    final visibleItems = loaded.visibleItems;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Позиции'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: cubit.backToDashboard,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена'),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: StockSearchField(
+              controller: _searchController,
+              onChanged: cubit.applySearchQuery,
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Удалить'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: StockFilterChips(
+              selected: loaded.filter,
+              onSelected: cubit.applyListFilter,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: visibleItems.isEmpty
+                ? Center(
+                    child: Text(
+                      'Позиции не найдены',
+                      style: AppTextStyles.bodyLarge,
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: visibleItems.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) => StockPositionRow(
+                      item: visibleItems[index],
+                      goodsById: loaded.goodsById,
+                      onTap: () =>
+                          cubit.openPositionDetail(visibleItems[index]),
+                    ),
+                  ),
           ),
         ],
       ),
     );
-
-    if (confirmed != true || !context.mounted) return;
-
-    final error =
-        await context.read<StockCubit>().deleteStockPosition(item.goodsId);
-    if (error != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
-    }
-  }
-
-  Future<void> _showAdjustDialog(
-    BuildContext context, {
-    required String title,
-    required int? maxCount,
-    required Future<String?> Function(int count, String? comment) onSubmit,
-  }) async {
-    final result = await showDialog<({int count, String? comment})>(
-      context: context,
-      builder: (dialogContext) => _StockAdjustDialog(
-        title: title,
-        maxCount: maxCount,
-      ),
-    );
-
-    if (result == null || !context.mounted) return;
-
-    final error = await onSubmit(result.count, result.comment);
-    if (error != null && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
-    }
   }
 }
 
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
+class _StockPositionDetailView extends StatelessWidget {
+  const _StockPositionDetailView({required this.loaded});
+
+  final AdminStockPositionDetailLoaded loaded;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = loaded.item;
+    final goodsName = loaded.goodsById[item.goodsId]?.displayName;
+    final title = stockItemTitle(item, loaded.goodsById);
+    final cubit = context.read<AdminStockCubit>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: cubit.backToList,
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            color: item.isLowStock ? AppColors.warningSubtle : null,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item.goodsAddr.isNotEmpty) ...[
+                    Text('Адрес', style: AppTextStyles.bodySmall),
+                    Text(item.goodsAddr, style: AppTextStyles.headingSmall),
+                    const SizedBox(height: 12),
+                  ],
+                  Text('Товар', style: AppTextStyles.bodySmall),
+                  Text(
+                    goodsName ?? shortId(item.goodsId),
+                    style: AppTextStyles.headingSmall,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DetailMetric(
+                          label: 'Остаток',
+                          value: '${item.count}',
+                        ),
+                      ),
+                      Expanded(
+                        child: _DetailMetric(
+                          label: 'Минимум',
+                          value: '${item.minCount}',
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (item.isLowStock) ...[
+                    const SizedBox(height: 12),
+                    const StockLowBadge(),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          AppButton(
+            text: 'Пополнить',
+            onPressed: () => showStockAdjustDialog(
+              context,
+              title: 'Пополнение',
+              maxCount: null,
+              onSubmit: (count, comment) => cubit.replenishStock(
+                goodsId: item.goodsId,
+                count: count,
+                comment: comment,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          AppButton(
+            text: item.count > 0 ? 'Списать' : 'Удалить',
+            variant: item.count > 0
+                ? AppButtonVariant.outlined
+                : AppButtonVariant.outlined,
+            onPressed: item.count > 0
+                ? () => showStockAdjustDialog(
+                    context,
+                    title: 'Списание',
+                    maxCount: item.count,
+                    onSubmit: (count, comment) => cubit.writeOffStock(
+                      goodsId: item.goodsId,
+                      count: count,
+                      comment: comment,
+                    ),
+                  )
+                : () => confirmDeleteStockPosition(
+                    context,
+                    label: goodsName ?? title,
+                    onConfirm: () => cubit.deleteStockPosition(item.goodsId),
+                  ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => showStockMetaDialog(
+              context,
+              goodsAddr: item.goodsAddr,
+              minCount: item.minCount,
+              onSubmit: (goodsAddr, minCount) => cubit.updateStockMeta(
+                goodsId: item.goodsId,
+                goodsAddr: goodsAddr,
+                minCount: minCount,
+              ),
+            ),
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Параметры позиции'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => StockMovementHistoryScreen(
+                  goodsId: item.goodsId,
+                  goodsName: goodsName ?? title,
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.history),
+            label: const Text('История движений'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailMetric extends StatelessWidget {
+  const _DetailMetric({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -338,187 +572,7 @@ class _Metric extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: AppTextStyles.bodySmall),
-        Text(value, style: AppTextStyles.bodyLarge),
-      ],
-    );
-  }
-}
-
-extension on StockItem {
-  String get displayLabel {
-    if (goodsAddr.isNotEmpty) return goodsAddr;
-    if (goodsId.length <= 8) return goodsId;
-    return '${goodsId.substring(0, 8)}…';
-  }
-}
-
-class _StockMetaDialog extends StatefulWidget {
-  const _StockMetaDialog({
-    required this.goodsAddr,
-    required this.minCount,
-  });
-
-  final String goodsAddr;
-  final int minCount;
-
-  @override
-  State<_StockMetaDialog> createState() => _StockMetaDialogState();
-}
-
-class _StockMetaDialogState extends State<_StockMetaDialog> {
-  late final TextEditingController _addrController;
-  late final TextEditingController _minCountController;
-
-  @override
-  void initState() {
-    super.initState();
-    _addrController = TextEditingController(text: widget.goodsAddr);
-    _minCountController =
-        TextEditingController(text: widget.minCount.toString());
-  }
-
-  @override
-  void dispose() {
-    _addrController.dispose();
-    _minCountController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Параметры позиции'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _addrController,
-            decoration: const InputDecoration(
-              labelText: 'Адрес / ячейка',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _minCountController,
-            decoration: const InputDecoration(
-              labelText: 'Минимальный остаток',
-              border: OutlineInputBorder(),
-            ),
-            keyboardType: TextInputType.number,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
-        ),
-        TextButton(
-          onPressed: _submit,
-          child: const Text('Сохранить'),
-        ),
-      ],
-    );
-  }
-
-  void _submit() {
-    final minCount = int.tryParse(_minCountController.text.trim());
-    if (minCount == null || minCount < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Минимальный остаток должен быть неотрицательным'),
-        ),
-      );
-      return;
-    }
-
-    Navigator.of(context).pop((
-      goodsAddr: _addrController.text.trim(),
-      minCount: minCount,
-    ));
-  }
-}
-
-class _StockAdjustDialog extends StatefulWidget {
-  const _StockAdjustDialog({
-    required this.title,
-    required this.maxCount,
-  });
-
-  final String title;
-  final int? maxCount;
-
-  @override
-  State<_StockAdjustDialog> createState() => _StockAdjustDialogState();
-}
-
-class _StockAdjustDialogState extends State<_StockAdjustDialog> {
-  int _quantity = 1;
-  final _commentController = TextEditingController();
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final maxCount = widget.maxCount;
-
-    return AlertDialog(
-      title: Text(widget.title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (maxCount != null)
-            Text('Доступно: $maxCount', style: AppTextStyles.bodySmall),
-          if (maxCount != null) const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: _quantity > 1
-                    ? () => setState(() => _quantity--)
-                    : null,
-                icon: const Icon(Icons.remove),
-              ),
-              Text('$_quantity', style: AppTextStyles.headingSmall),
-              IconButton(
-                onPressed: maxCount == null || _quantity < maxCount
-                    ? () => setState(() => _quantity++)
-                    : null,
-                icon: const Icon(Icons.add),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _commentController,
-            decoration: const InputDecoration(
-              labelText: 'Комментарий',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 2,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
-        ),
-        TextButton(
-          onPressed: () {
-            final comment = _commentController.text.trim();
-            Navigator.of(context).pop((
-              count: _quantity,
-              comment: comment.isEmpty ? null : comment,
-            ));
-          },
-          child: const Text('Применить'),
-        ),
+        Text(value, style: AppTextStyles.headingMedium),
       ],
     );
   }

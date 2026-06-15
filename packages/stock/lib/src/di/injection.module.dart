@@ -11,6 +11,7 @@ import 'package:stock_feature/src/data/repositories/supabase_stock_movement_repo
     as _i60;
 import 'package:stock_feature/src/data/repositories/supabase_stock_repository.dart'
     as _i211;
+import 'package:stock_feature/src/domain/admin_stock_cubit.dart' as _i250;
 import 'package:stock_feature/src/domain/repositories/stock_movement_repository.dart'
     as _i110;
 import 'package:stock_feature/src/domain/repositories/stock_repository.dart'
@@ -33,6 +34,12 @@ class StockFeaturePackageModule extends _i526.MicroPackageModule {
               gh<_i110.StockMovementRepository>(),
               gh<_i804.GoodsRepository>(),
             ));
+    gh.factory<_i250.AdminStockCubit>(() => _i250.AdminStockCubit(
+          gh<_i99.StockRepository>(),
+          gh<_i804.GoodsRepository>(),
+          gh<_i804.ReferenceSyncService>(),
+          gh<_i375.SupabaseService>(),
+        ));
     gh.factory<_i190.StockCubit>(() => _i190.StockCubit(
           gh<_i99.StockRepository>(),
           gh<_i804.GoodsRepository>(),

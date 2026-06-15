@@ -1,6 +1,7 @@
 library stock_feature;
 
 export 'src/di/injection.module.dart';
+export 'src/domain/admin_stock_cubit.dart';
 export 'src/domain/models/stock_item.dart';
 export 'src/domain/models/stock_movement.dart';
 export 'src/domain/repositories/stock_movement_repository.dart';

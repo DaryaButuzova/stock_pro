@@ -4,6 +4,8 @@ import 'package:injectable/injectable.dart';
 import 'package:local_reference_feature/local_reference_feature.dart';
 
 import 'models/stock_movement.dart';
+import 'models/stock_movement_filter.dart';
+import 'models/stock_movement_summary.dart';
 import 'repositories/stock_movement_repository.dart';
 import 'stock_error_messages.dart';
 
@@ -19,11 +21,27 @@ class StockMovementHistoryCubit extends Cubit<StockMovementHistoryState> {
   final StockMovementRepository _movementRepository;
   final GoodsRepository _goodsRepository;
 
-  Future<void> loadMovements({String? goodsId}) async {
-    emit(StockMovementHistoryLoading(filterGoodsId: goodsId));
+  String? _filterGoodsId;
+  StockMovementTypeFilter _typeFilter = StockMovementTypeFilter.all;
+  List<StockMovement> _movements = const [];
+  Map<String, Goods> _goodsById = const {};
+
+  Future<void> loadMovements({
+    String? goodsId,
+    StockMovementTypeFilter? typeFilter,
+  }) async {
+    if (goodsId != null) _filterGoodsId = goodsId;
+    if (typeFilter != null) _typeFilter = typeFilter;
+
+    emit(
+      StockMovementHistoryLoading(
+        filterGoodsId: _filterGoodsId,
+        typeFilter: _typeFilter,
+      ),
+    );
     try {
       final movements = await _movementRepository.getMovements(
-        goodsId: goodsId,
+        goodsId: _filterGoodsId,
       );
       final goodsById = <String, Goods>{};
 
@@ -35,15 +53,25 @@ class StockMovementHistoryCubit extends Cubit<StockMovementHistoryState> {
         }
       }
 
-      emit(
-        StockMovementHistoryLoaded(
-          movements: movements,
-          goodsById: goodsById,
-          filterGoodsId: goodsId,
-        ),
-      );
+      _movements = movements;
+      _goodsById = goodsById;
+      emit(_loadedState());
     } catch (e) {
       emit(StockMovementHistoryFailure(mapStockError(e)));
     }
+  }
+
+  void applyTypeFilter(StockMovementTypeFilter filter) {
+    _typeFilter = filter;
+    emit(_loadedState());
+  }
+
+  StockMovementHistoryLoaded _loadedState() {
+    return StockMovementHistoryLoaded(
+      movements: _movements,
+      goodsById: _goodsById,
+      filterGoodsId: _filterGoodsId,
+      typeFilter: _typeFilter,
+    );
   }
 }

@@ -12,12 +12,16 @@ final class StockMovementHistoryInitial extends StockMovementHistoryState {
 }
 
 final class StockMovementHistoryLoading extends StockMovementHistoryState {
-  const StockMovementHistoryLoading({this.filterGoodsId});
+  const StockMovementHistoryLoading({
+    this.filterGoodsId,
+    this.typeFilter = StockMovementTypeFilter.all,
+  });
 
   final String? filterGoodsId;
+  final StockMovementTypeFilter typeFilter;
 
   @override
-  List<Object?> get props => [filterGoodsId];
+  List<Object?> get props => [filterGoodsId, typeFilter];
 }
 
 final class StockMovementHistoryLoaded extends StockMovementHistoryState {
@@ -25,14 +29,28 @@ final class StockMovementHistoryLoaded extends StockMovementHistoryState {
     required this.movements,
     required this.goodsById,
     this.filterGoodsId,
+    this.typeFilter = StockMovementTypeFilter.all,
   });
 
   final List<StockMovement> movements;
   final Map<String, Goods> goodsById;
   final String? filterGoodsId;
+  final StockMovementTypeFilter typeFilter;
+
+  List<StockMovement> get visibleMovements {
+    final type = typeFilter.movementType;
+    if (type == null) return movements;
+    return movements.where((m) => m.movementType == type).toList();
+  }
+
+  StockMovementSummary get summary =>
+      StockMovementSummary.fromMovements(visibleMovements);
+
+  List<StockMovementDayGroup> get dayGroups =>
+      groupMovementsByDay(visibleMovements);
 
   @override
-  List<Object?> get props => [movements, goodsById, filterGoodsId];
+  List<Object?> get props => [movements, goodsById, filterGoodsId, typeFilter];
 }
 
 final class StockMovementHistoryFailure extends StockMovementHistoryState {

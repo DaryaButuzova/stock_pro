@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:local_reference_feature/local_reference_feature.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../domain/models/stock_item.dart';
+import '../domain/models/stock_positions_filter.dart';
 import '../domain/stock_cubit.dart';
+import '../domain/stock_list_utils.dart';
+import 'stock_widgets.dart';
 
 final _getIt = GetIt.instance;
 
@@ -20,8 +24,23 @@ class StockScreen extends StatelessWidget {
   }
 }
 
-class _StockView extends StatelessWidget {
+class _StockView extends StatefulWidget {
   const _StockView();
+
+  @override
+  State<_StockView> createState() => _StockViewState();
+}
+
+class _StockViewState extends State<_StockView> {
+  final _searchController = TextEditingController();
+  StockPositionsFilter _filter = StockPositionsFilter.all;
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,15 +73,60 @@ class _StockView extends StatelessWidget {
                 style: AppTextStyles.bodyLarge,
               ),
             ),
-            StockLoaded(:final items, :final goodsById) => ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _StockCard(
-                key: ValueKey(items[index].goodsId),
-                item: items[index],
-                goodsName: goodsById[items[index].goodsId]?.displayName,
-              ),
+            StockLoaded(:final items, :final goodsById) => Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: StockSearchField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: StockFilterChips(
+                    selected: _filter,
+                    onSelected: (filter) => setState(() => _filter = filter),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Builder(
+                    builder: (context) {
+                      final visible = filterStockItems(
+                        items: items,
+                        goodsById: goodsById,
+                        filter: _filter,
+                        searchQuery: _searchQuery,
+                      );
+
+                      if (visible.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'Позиции не найдены',
+                            style: AppTextStyles.bodyLarge,
+                          ),
+                        );
+                      }
+
+                      return ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: visible.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) => StockPositionRow(
+                          item: visible[index],
+                          goodsById: goodsById,
+                          onTap: () => _showReadOnlyDetail(
+                            context,
+                            item: visible[index],
+                            goodsById: goodsById,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
             StockFailure() => Center(
               child: Column(
@@ -82,95 +146,62 @@ class _StockView extends StatelessWidget {
       ),
     );
   }
-}
 
-class _StockCard extends StatelessWidget {
-  const _StockCard({
-    required this.item,
-    this.goodsName,
-    super.key,
-  });
-
-  final StockItem item;
-  final String? goodsName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: item.isLowStock ? AppColors.warningSubtle : null,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+  void _showReadOnlyDetail(
+    BuildContext context, {
+    required StockItem item,
+    required Map<String, Goods> goodsById,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.goodsAddr.isNotEmpty
-                        ? item.goodsAddr
-                        : 'Без адреса',
-                    style: AppTextStyles.headingSmall,
-                  ),
-                ),
-                if (item.isLowStock)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Мало',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textInverse,
-                      ),
-                    ),
-                  ),
-              ],
+            Text(
+              stockItemTitle(item, goodsById),
+              style: AppTextStyles.headingSmall,
             ),
             const SizedBox(height: 8),
             Text(
-              'Товар: ${goodsName ?? _shortId(item.goodsId)}',
+              stockItemSubtitle(item, goodsById),
               style: AppTextStyles.bodyMedium,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             Row(
               children: [
-                _Metric(label: 'Кол-во', value: '${item.count}'),
-                const SizedBox(width: 24),
-                _Metric(label: 'Мин.', value: '${item.minCount}'),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Остаток', style: AppTextStyles.bodySmall),
+                      Text('${item.count}', style: AppTextStyles.headingMedium),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Минимум', style: AppTextStyles.bodySmall),
+                      Text(
+                        '${item.minCount}',
+                        style: AppTextStyles.headingMedium,
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
+            if (item.isLowStock) ...[
+              const SizedBox(height: 12),
+              const StockLowBadge(),
+            ],
           ],
         ),
       ),
-    );
-  }
-
-  String _shortId(String id) {
-    if (id.length <= 8) return id;
-    return '${id.substring(0, 8)}…';
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.bodySmall),
-        Text(value, style: AppTextStyles.bodyLarge),
-      ],
     );
   }
 }
