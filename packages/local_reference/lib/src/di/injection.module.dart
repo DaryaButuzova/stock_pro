@@ -10,13 +10,19 @@ import 'package:local_reference_feature/src/data/database/app_database.dart'
     as _i553;
 import 'package:local_reference_feature/src/data/repositories/drift_goods_repository.dart'
     as _i36;
+import 'package:local_reference_feature/src/data/repositories/supabase_goods_admin_repository.dart'
+    as _i255;
 import 'package:local_reference_feature/src/data/repositories/supabase_goods_sync_repository.dart'
     as _i209;
 import 'package:local_reference_feature/src/di/injection.dart' as _i218;
+import 'package:local_reference_feature/src/domain/admin_goods_cubit.dart'
+    as _i122;
 import 'package:local_reference_feature/src/domain/goods_realtime_service.dart'
     as _i271;
 import 'package:local_reference_feature/src/domain/reference_sync_service.dart'
     as _i15;
+import 'package:local_reference_feature/src/domain/repositories/goods_admin_repository.dart'
+    as _i91;
 import 'package:local_reference_feature/src/domain/repositories/goods_repository.dart'
     as _i387;
 import 'package:local_reference_feature/src/domain/repositories/goods_sync_repository.dart'
@@ -37,8 +43,15 @@ class LocalReferenceFeaturePackageModule extends _i526.MicroPackageModule {
               gh<_i375.SupabaseService>(),
               gh<_i553.AppDatabase>(),
             ));
+    gh.factory<_i91.GoodsAdminRepository>(
+        () => _i255.SupabaseGoodsAdminRepository(gh<_i375.SupabaseService>()));
     gh.lazySingleton<_i15.ReferenceSyncService>(
         () => _i15.ReferenceSyncService(gh<_i662.GoodsSyncRepository>()));
+    gh.factory<_i122.AdminGoodsCubit>(() => _i122.AdminGoodsCubit(
+          gh<_i387.GoodsRepository>(),
+          gh<_i91.GoodsAdminRepository>(),
+          gh<_i15.ReferenceSyncService>(),
+        ));
     gh.lazySingleton<_i271.GoodsRealtimeService>(
         () => _i271.GoodsRealtimeService(
               gh<_i375.SupabaseService>(),

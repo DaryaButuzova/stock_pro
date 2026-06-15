@@ -16,6 +16,18 @@ class Goods {
   final double? cost;
   final String? category;
 
+  /// Parses a Supabase `goods` row.
+  factory Goods.fromRow(Map<String, dynamic> row) {
+    return Goods(
+      id: row['id'] as String,
+      createdAt: DateTime.parse(row['created_at'] as String),
+      name: row['name'] as String?,
+      description: row['description'] as String?,
+      cost: (row['cost'] as num?)?.toDouble(),
+      category: row['category'] as String?,
+    );
+  }
+
   /// Display label: name if present, otherwise shortened id.
   String get displayName {
     if (name != null && name!.isNotEmpty) return name!;

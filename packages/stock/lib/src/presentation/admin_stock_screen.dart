@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:local_reference_feature/local_reference_feature.dart';
 import 'package:ui_kit/ui_kit.dart';
 
 import '../domain/models/stock_item.dart';
@@ -30,6 +31,15 @@ class _AdminStockView extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Склад'),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AdminGoodsScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.inventory_2_outlined),
+            tooltip: 'Справочник товаров',
+          ),
           IconButton(
             onPressed: () => context.read<StockCubit>().loadStock(),
             icon: const Icon(Icons.refresh),
