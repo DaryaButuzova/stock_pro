@@ -723,7 +723,7 @@ void initInventoryMicroPackage() {}
 | `packages/local_reference` | Реализован (`goods`; расширяемо для других справочников) |
 | `packages/profile` | Реализован + `UserSessionCubit`, `RoleGate` |
 | CRUD справочника `goods` в UI | Реализован: `AdminGoodsScreen` (вход с экрана «Склад» admin) |
-| Фильтры/отчёты в истории продаж | Не реализованы |
+| Фильтры/отчёты в истории продаж | Реализованы: фильтр по дате/сотруднику, сводка, экспорт CSV |
 | Route guards | Не реализованы (роль через `RoleGate`, права через RLS/RPC) |
 
 В `pubspec.yaml` приложения подключены `dio`, `retrofit` — для будущих REST-слоёв.

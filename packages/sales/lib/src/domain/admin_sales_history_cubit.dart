@@ -5,8 +5,13 @@ import 'package:local_reference_feature/local_reference_feature.dart';
 
 import 'models/goods_in_sale.dart';
 import 'models/sale_history_entry.dart';
+import 'models/sales_dashboard_metrics.dart';
+import 'models/sales_history_filter.dart';
+import 'models/sales_history_summary.dart';
+import 'models/seller_option.dart';
 import 'repositories/goods_in_sales_repository.dart';
 import 'repositories/sales_repository.dart';
+import 'sales_history_export.dart';
 
 part 'admin_sales_history_state.dart';
 
@@ -24,24 +29,75 @@ class AdminSalesHistoryCubit extends Cubit<AdminSalesHistoryState> {
   final GoodsInSalesRepository _goodsInSalesRepository;
   final GoodsRepository _goodsRepository;
 
-  Future<void> loadHistory() async {
+  SalesHistoryFilter _filter = SalesHistoryFilter.empty;
+  List<SellerOption> _sellers = const [];
+  List<SaleHistoryEntry> _entries = const [];
+
+  Future<void> loadHistory({SalesHistoryFilter? filter}) async {
+    if (filter != null) {
+      _filter = filter;
+    }
+
     emit(const AdminSalesHistoryLoading());
     try {
-      final entries = await _salesRepository.getCompletedSales();
-      emit(AdminSalesHistoryListLoaded(entries: entries));
+      if (_sellers.isEmpty) {
+        _sellers = await _salesRepository.getSellerOptions();
+      }
+
+      _entries = await _salesRepository.getCompletedSales(filter: _filter);
+      emit(_dashboardState());
     } catch (e) {
       emit(AdminSalesHistoryFailure(e.toString()));
     }
   }
 
+  Future<void> applyFilter(SalesHistoryFilter filter) {
+    return loadHistory(filter: filter);
+  }
+
+  Future<void> clearFilter() {
+    return loadHistory(filter: SalesHistoryFilter.empty);
+  }
+
+  void openEntriesList() {
+    emit(
+      AdminSalesHistoryEntriesLoaded(
+        entries: _entries,
+        filter: _filter,
+        sellers: _sellers,
+      ),
+    );
+  }
+
+  void backToDashboard() {
+    emit(_dashboardState());
+  }
+
+  String? buildExportCsv() {
+    final entries = switch (state) {
+      AdminSalesHistoryDashboardLoaded(:final entries) => entries,
+      AdminSalesHistoryEntriesLoaded(:final entries) => entries,
+      _ => null,
+    };
+    if (entries == null) return null;
+
+    return buildSalesHistoryCsv(
+      entries: entries,
+      filter: _filter,
+      sellers: _sellers,
+      summary: SalesHistorySummary.fromEntries(entries),
+    );
+  }
+
   Future<void> openSaleDetail(SaleHistoryEntry entry) async {
-    final listState = state;
-    if (listState is! AdminSalesHistoryListLoaded) return;
+    if (state is! AdminSalesHistoryEntriesLoaded) return;
 
     emit(
       AdminSalesHistoryDetailLoading(
-        entries: listState.entries,
+        entries: _entries,
         entry: entry,
+        filter: _filter,
+        sellers: _sellers,
       ),
     );
 
@@ -58,10 +114,12 @@ class AdminSalesHistoryCubit extends Cubit<AdminSalesHistoryState> {
 
       emit(
         AdminSalesHistoryDetailLoaded(
-          entries: listState.entries,
+          entries: _entries,
           entry: entry,
           items: items,
           goodsById: goodsById,
+          filter: _filter,
+          sellers: _sellers,
         ),
       );
     } catch (e) {
@@ -70,14 +128,20 @@ class AdminSalesHistoryCubit extends Cubit<AdminSalesHistoryState> {
   }
 
   void backToList() {
-    final state = this.state;
-    final entries = switch (state) {
-      AdminSalesHistoryDetailLoading(:final entries) => entries,
-      AdminSalesHistoryDetailLoaded(:final entries) => entries,
-      _ => null,
-    };
+    emit(
+      AdminSalesHistoryEntriesLoaded(
+        entries: _entries,
+        filter: _filter,
+        sellers: _sellers,
+      ),
+    );
+  }
 
-    if (entries == null) return;
-    emit(AdminSalesHistoryListLoaded(entries: entries));
+  AdminSalesHistoryDashboardLoaded _dashboardState() {
+    return AdminSalesHistoryDashboardLoaded(
+      entries: _entries,
+      filter: _filter,
+      sellers: _sellers,
+    );
   }
 }

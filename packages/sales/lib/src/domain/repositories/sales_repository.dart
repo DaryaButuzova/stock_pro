@@ -1,5 +1,7 @@
 import '../models/sale.dart';
 import '../models/sale_history_entry.dart';
+import '../models/sales_history_filter.dart';
+import '../models/seller_option.dart';
 
 /// Persistence for `public.sales`.
 abstract class SalesRepository {
@@ -22,5 +24,10 @@ abstract class SalesRepository {
   Future<void> deleteDraftSale(String saleId);
 
   /// Returns completed sales for admin history (newest first).
-  Future<List<SaleHistoryEntry>> getCompletedSales();
+  Future<List<SaleHistoryEntry>> getCompletedSales({
+    SalesHistoryFilter filter = SalesHistoryFilter.empty,
+  });
+
+  /// Returns staff profiles for admin history filters.
+  Future<List<SellerOption>> getSellerOptions();
 }

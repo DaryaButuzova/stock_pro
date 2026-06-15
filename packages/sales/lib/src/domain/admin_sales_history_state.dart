@@ -15,26 +15,58 @@ final class AdminSalesHistoryLoading extends AdminSalesHistoryState {
   const AdminSalesHistoryLoading();
 }
 
-final class AdminSalesHistoryListLoaded extends AdminSalesHistoryState {
-  const AdminSalesHistoryListLoaded({required this.entries});
+final class AdminSalesHistoryDashboardLoaded extends AdminSalesHistoryState {
+  const AdminSalesHistoryDashboardLoaded({
+    required this.entries,
+    required this.filter,
+    required this.sellers,
+  });
 
   final List<SaleHistoryEntry> entries;
+  final SalesHistoryFilter filter;
+  final List<SellerOption> sellers;
+
+  SalesHistorySummary get summary => SalesHistorySummary.fromEntries(entries);
+
+  SalesDashboardMetrics get metrics =>
+      SalesDashboardMetrics.fromEntries(entries);
 
   @override
-  List<Object?> get props => [entries];
+  List<Object?> get props => [entries, filter, sellers];
+}
+
+final class AdminSalesHistoryEntriesLoaded extends AdminSalesHistoryState {
+  const AdminSalesHistoryEntriesLoaded({
+    required this.entries,
+    required this.filter,
+    required this.sellers,
+  });
+
+  final List<SaleHistoryEntry> entries;
+  final SalesHistoryFilter filter;
+  final List<SellerOption> sellers;
+
+  SalesHistorySummary get summary => SalesHistorySummary.fromEntries(entries);
+
+  @override
+  List<Object?> get props => [entries, filter, sellers];
 }
 
 final class AdminSalesHistoryDetailLoading extends AdminSalesHistoryState {
   const AdminSalesHistoryDetailLoading({
     required this.entries,
     required this.entry,
+    required this.filter,
+    required this.sellers,
   });
 
   final List<SaleHistoryEntry> entries;
   final SaleHistoryEntry entry;
+  final SalesHistoryFilter filter;
+  final List<SellerOption> sellers;
 
   @override
-  List<Object?> get props => [entries, entry];
+  List<Object?> get props => [entries, entry, filter, sellers];
 }
 
 final class AdminSalesHistoryDetailLoaded extends AdminSalesHistoryState {
@@ -43,15 +75,19 @@ final class AdminSalesHistoryDetailLoaded extends AdminSalesHistoryState {
     required this.entry,
     required this.items,
     required this.goodsById,
+    required this.filter,
+    required this.sellers,
   });
 
   final List<SaleHistoryEntry> entries;
   final SaleHistoryEntry entry;
   final List<GoodsInSale> items;
   final Map<String, Goods> goodsById;
+  final SalesHistoryFilter filter;
+  final List<SellerOption> sellers;
 
   @override
-  List<Object?> get props => [entries, entry, items, goodsById];
+  List<Object?> get props => [entries, entry, items, goodsById, filter, sellers];
 }
 
 final class AdminSalesHistoryFailure extends AdminSalesHistoryState {
